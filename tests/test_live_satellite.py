@@ -182,3 +182,16 @@ def test_live_detect_always_analyses_at_zoom_17(client, fake_net, requested_zoom
     assert res.status_code == 200
     assert fake_net and all("/tile/" in url and f"/{ZOOM}/" in url for url in fake_net)
     assert res.get_json()["bounds"] == pytest.approx(expected_bounds(LAT, LON, ZOOM, 2), rel=1e-12)
+
+
+def test_live_preview_returns_both_images_fast_without_detection(client, fake_net, app_module):
+    """Step 2 shows the imagery right away; detection only runs when the user asks for it."""
+    calls = []
+    app_module.ml_detector.detect = lambda *a, **k: calls.append(1)  # must not be used by the preview
+    res = client.post("/api/live/preview", json={"lat": LAT, "lon": LON, "zoom": 14, "year_t1": "2014", "year_t2": "2026"})
+    body = res.get_json()
+    assert res.status_code == 200 and body["success"] is True and calls == []
+    assert body["t1"].startswith("data:image/jpeg;base64,") and body["t2"].startswith("data:image/jpeg;base64,")
+    assert body["years"] == {"t1": "2014", "t2": "2026"}
+    assert body["bounds"] == pytest.approx(expected_bounds(LAT, LON, ZOOM, 2), rel=1e-12)
+    assert all(f"/{ZOOM}/" in url for url in fake_net)

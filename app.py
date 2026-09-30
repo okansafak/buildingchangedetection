@@ -3,7 +3,8 @@ import time
 import json
 import csv
 import uuid
-from io import StringIO
+import base64
+from io import BytesIO, StringIO
 from flask import Flask, render_template, request, jsonify, send_file, Response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -101,6 +102,37 @@ def get_live_years():
     for y, info in WAYBACK_RELEASES.items():
         years.append({"year": y, "title": info["title"], "date": info["date"]})
     return jsonify(years)
+
+
+def _jpeg_data_uri(image):
+    buf = BytesIO()
+    image.convert('RGB').save(buf, 'JPEG', quality=90)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode('ascii')
+
+
+@app.route('/api/live/preview', methods=['POST'])
+def live_preview():
+    """T1/T2 Wayback imagery for step 2 only (tiles are cached); detection runs later via /api/live/detect."""
+    data = request.json or {}
+    lat = float(data.get('lat', 41.1070))
+    lon = float(data.get('lon', 28.7900))
+    year_t1 = str(data.get('year_t1', '2014'))
+    year_t2 = str(data.get('year_t2', '2026'))
+    try:
+        img_t1, img_t2, bounds, gsd = live_fetcher.fetch_bitemporal_pair(
+            lat=lat, lon=lon, zoom=LIVE_ANALYSIS_ZOOM, year_t1=year_t1, year_t2=year_t2, grid_size=2
+        )
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Canlı uydu verisi çekilirken hata oluştu: {str(e)}"}), 500
+    return jsonify({
+        "success": True,
+        "t1": _jpeg_data_uri(img_t1),
+        "t2": _jpeg_data_uri(img_t2),
+        "bounds": bounds,
+        "gsd": gsd,
+        "years": {"t1": year_t1, "t2": year_t2},
+    })
+
 
 @app.route('/api/live/detect', methods=['POST'])
 def run_live_detect():

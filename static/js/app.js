@@ -875,27 +875,24 @@ async function handleStep1Next() {
             el.imgPreviewT2.src = el.imgPreviewT1.src;
             
             goToStep(2);
-            
-            const aiConf = getAiSettings();
-            const res = await fetch('/api/live/detect', {
+
+            // Step 2 only needs the imagery (1-2 s); building detection runs on "Binaları Bul"
+            state.resultsData = null;
+            state.livePayload = {
+                lat: state.selectedCoords[0],
+                lon: state.selectedCoords[1],
+                year_t1: y1,
+                year_t2: y2
+            };
+            const res = await fetch('/api/live/preview', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    lat: state.selectedCoords[0],
-                    lon: state.selectedCoords[1],
-                    zoom: state.selectedZoom || 17,
-                    year_t1: y1,
-                    year_t2: y2,
-                    threshold: aiConf.threshold,
-                    min_area_m2: aiConf.minArea,
-                    engine: 'ml'
-                })
+                body: JSON.stringify(state.livePayload)
             });
             const data = await res.json();
             if (data.success) {
-                state.resultsData = data;
-                el.imgPreviewT1.src = data.overlays.t1_png_base64;
-                el.imgPreviewT2.src = data.overlays.t2_png_base64;
+                el.imgPreviewT1.src = data.t1;
+                el.imgPreviewT2.src = data.t2;
             } else {
                 showToast('Uydu verisi getirilemedi: ' + (data.error || ''), 'error');
             }
@@ -971,10 +968,18 @@ async function handleRunDetection() {
     el.btnRunBuildingDetection.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Binalar Tespit Ediliyor...';
 
     try {
-        let data = state.resultsData;
+        let data = null;
         const aiConf = getAiSettings();
-        
-        if (!data || (state.sourceType !== 'live-hotspot' && state.sourceType !== 'map-click')) {
+
+        if (state.sourceType === 'live-hotspot' || state.sourceType === 'map-click') {
+            const res = await fetch('/api/live/detect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...state.livePayload, min_area_m2: aiConf.minArea, engine: 'ml' })
+            });
+            data = await res.json();
+            state.resultsData = data;
+        } else {
             if (state.sourceType === 'benchmark-set') {
                 data = await runDetectionJob({
                     engine: 'ml',
