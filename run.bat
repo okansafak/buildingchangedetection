@@ -19,10 +19,10 @@ if errorlevel 1 (
     exit /b 1
 )
 
-python -c "import flask, flask_cors, cv2, numpy, PIL, torch" >nul 2>nul
+python -c "import flask, flask_cors, cv2, numpy, PIL, onnxruntime, huggingface_hub, pyproj, tifffile" >nul 2>nul
 if errorlevel 1 (
     echo Eksik bağımlılıklar yükleniyor...
-    python -m pip install flask flask-cors opencv-python-headless numpy pillow torch
+    python -m pip install -r requirements.txt
     if errorlevel 1 (
         echo [HATA] Bağımlılıklar yüklenemedi.
         pause
