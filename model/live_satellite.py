@@ -1,9 +1,9 @@
 import os
-import math
 import urllib.request
-import numpy as np
 from PIL import Image
 from io import BytesIO
+
+from model import geo
 
 # Curated Wayback release mappings for clean historical comparison
 WAYBACK_RELEASES = {
@@ -90,11 +90,7 @@ class LiveSatelliteFetcher:
         os.makedirs(self.cache_dir, exist_ok=True)
 
     def _get_tile_coords(self, lat, lon, zoom):
-        lat_rad = math.radians(lat)
-        n = 2.0 ** zoom
-        x = int((lon + 180.0) / 360.0 * n)
-        y = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
-        return x, y
+        return geo.latlon_to_tile(lat, lon, zoom)
 
     def fetch_patch(self, lat, lon, zoom=17, release_id='26334', grid_size=2):
         """
@@ -102,9 +98,7 @@ class LiveSatelliteFetcher:
         Default 2x2 grid yields a 512x512 pixel patch with precise WGS84 coordinates.
         """
         center_x, center_y = self._get_tile_coords(lat, lon, zoom)
-        n = 2.0 ** zoom
-        lat_rad = math.radians(lat)
-        
+
         # Grid tiles
         patch_w = grid_size * 256
         patch_h = grid_size * 256
@@ -143,13 +137,18 @@ class LiveSatelliteFetcher:
                             
                 stitched.paste(tile_img, (col * 256, row * 256))
                 
-        # Calculate bounding box (South, West, North, East)
-        lat_south = math.degrees(math.atan(math.sinh(math.pi * (1.0 - 2.0 * (center_y + grid_size) / n))))
-        
+        # Bounding box (South, West, North, East) of the stitched grid. The grid starts
+        # at the tile containing lat/lon and extends right/down, so the point is not centred.
+        bounds = [
+            geo.tile_to_lat(center_y + grid_size, zoom),
+            geo.tile_to_lon(center_x, zoom),
+            geo.tile_to_lat(center_y, zoom),
+            geo.tile_to_lon(center_x + grid_size, zoom),
+        ]
+
         # Ground Sample Distance (m / pixel)
-        gsd = (156543.03392 * math.cos(lat_rad)) / n
-        bounds = [lat_south, lon_west, lat_north, lon_east]
-        
+        gsd = geo.ground_resolution(lat, zoom)
+
         return stitched, bounds, gsd
 
     def fetch_bitemporal_pair(self, lat, lon, zoom=17, year_t1='2014', year_t2='2026', grid_size=2):

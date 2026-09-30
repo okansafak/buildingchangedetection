@@ -33,7 +33,7 @@ The latest result is stored in the global `LAST_RESULTS['latest']`; `/api/export
 
 The `detect()` return dict is the contract with the frontend and is persisted verbatim as a project's `results_data`: `stats`, `buildings` (each with geo `centroid` and pixel `px_coords`), `geojson`, and `overlays` (base64 PNG data URIs for mask, heatmap, T1, T2).
 
-**Wayback releases** — [model/live_satellite.py](model/live_satellite.py) maps years to Esri Wayback release IDs in `WAYBACK_RELEASES` (curated by hand from `wayback_releases.json`), and defines `LIVE_HOTSPOTS`. Missing historical tiles become gray placeholder tiles on purpose (falling back to current imagery would make T1 == T2). Tiles are cached as `static/live_cache/{release}_{zoom}_{y}_{x}.jpg`.
+**Wayback releases** — [model/live_satellite.py](model/live_satellite.py) maps years to Esri Wayback release IDs in `WAYBACK_RELEASES` (curated by hand from `wayback_releases.json`), and defines `LIVE_HOTSPOTS`. The 2×2 grid starts at the tile containing the requested point and extends right/down, so the point is not centred in the patch. Missing historical tiles become gray placeholder tiles on purpose (falling back to current imagery would make T1 == T2). Tiles are cached as `static/live_cache/{release}_{zoom}_{y}_{x}.jpg`.
 
 **Geo math** — [model/geo.py](model/geo.py) holds all bounds, pixel↔lon/lat and Web Mercator tile math as pure functions; bounds are always `[south, west, north, east]`. Snapshot tests compare floats exactly, so keep operation order (and numpy vs `math`) when editing it.
 
