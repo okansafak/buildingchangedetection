@@ -35,6 +35,8 @@ The `detect()` return dict is the contract with the frontend and is persisted ve
 
 **Wayback releases** — [model/live_satellite.py](model/live_satellite.py) maps years to Esri Wayback release IDs in `WAYBACK_RELEASES` (curated by hand from `wayback_releases.json`), and defines `LIVE_HOTSPOTS`. Missing historical tiles become gray placeholder tiles on purpose (falling back to current imagery would make T1 == T2). Tiles are cached as `static/live_cache/{release}_{zoom}_{y}_{x}.jpg`.
 
+**Geo math** — [model/geo.py](model/geo.py) holds all bounds, pixel↔lon/lat and Web Mercator tile math as pure functions; bounds are always `[south, west, north, east]`. Snapshot tests compare floats exactly, so keep operation order (and numpy vs `math`) when editing it.
+
 **Persistence** — [model/project_manager.py](model/project_manager.py) uses SQLite at `data/projects.db`; `coords`, `stats`, `results_data` are JSON-encoded TEXT columns. `list_projects` omits `results_data`, and search filtering happens in Python. `data/projects.json` is a legacy file that nothing reads.
 
 **Frontend** — [templates/index.html](templates/index.html) + [static/js/app.js](static/js/app.js) (vanilla JS, one global `state` object, DOM refs in `el`) + [static/css/style.css](static/css/style.css). There are two screens, `dashboard` (project list) and `workspace`, and a 3-step wizard (1: pick source, 2: preview, 3: results). Leaflet with Esri imagery is used only for picking a location in step 1. Results are rendered in pixel space on a custom image-swipe stage (T2 underneath, clipped T1 on top, with pan/zoom and SVG polygons from `px_coords`), not as geo-overlays on a map. Detection settings and custom collections are stored in `localStorage` (`atlas_*` keys) and sent with each request.
