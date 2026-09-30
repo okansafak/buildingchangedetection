@@ -555,17 +555,23 @@ async function openProject(projectId) {
 
 // Delete project
 async function deleteProject(projectId, projectName) {
-    if (!confirm(`"${projectName}" projesini silmek istediğinize emin misiniz?`)) {
-        return;
-    }
+    const confirmed = await showConfirm({
+        title: 'Projeyi Sil',
+        message: `<strong>"${projectName}"</strong> projesini kalıcı olarak silmek istediğinize emin misiniz?`,
+        icon: 'danger',
+        confirmText: 'Evet, Sil',
+        cancelText: 'Vazgeç'
+    });
+    if (!confirmed) return;
 
     try {
         const res = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
         const data = await res.json();
         if (data.success) {
+            showToast('Proje başarıyla silindi.', 'success');
             loadProjects();
         } else {
-            alert('Proje silinemedi: ' + (data.error || ''));
+            showToast('Proje silinemedi: ' + (data.error || ''), 'error');
         }
     } catch (err) {
         console.error('Error deleting project:', err);
@@ -602,7 +608,7 @@ async function saveProjectToDatabase(showNotice = false) {
             state.currentProjectId = data.project.id;
             setSaveIndicator(true);
             if (showNotice) {
-                alert('Proje başarıyla kaydedildi!');
+                showToast('Proje başarıyla kaydedildi!', 'success');
             }
         }
     } catch (err) {
@@ -818,7 +824,7 @@ async function handleStep1Next() {
                 el.imgPreviewT1.src = data.overlays.t1_png_base64;
                 el.imgPreviewT2.src = data.overlays.t2_png_base64;
             } else {
-                alert('Uydu verisi getirilemedi: ' + (data.error || ''));
+                showToast('Uydu verisi getirilemedi: ' + (data.error || ''), 'error');
             }
 
         } else if (state.sourceType === 'benchmark-set') {
@@ -838,7 +844,7 @@ async function handleStep1Next() {
 
         } else if (state.sourceType === 'custom-upload') {
             if (!el.inputUploadT1.files[0] || !el.inputUploadT2.files[0]) {
-                alert('Lütfen hem Zaman 1 (T1) hem de Zaman 2 (T2) fotoğraflarını seçin.');
+                showToast('Lütfen hem Zaman 1 (T1) hem de Zaman 2 (T2) fotoğraflarını seçin.', 'warning');
                 el.btnGotoStep2.disabled = false;
                 el.btnGotoStep2.innerHTML = 'Görüntüleri Getir ve 2. Adıma Geç <i class="fa-solid fa-arrow-right"></i>';
                 return;
@@ -854,7 +860,7 @@ async function handleStep1Next() {
             });
             const uploadData = await uploadRes.json();
             if (!uploadData.success) {
-                alert('Yükleme hatası: ' + uploadData.error);
+                showToast('Yükleme hatası: ' + uploadData.error, 'error');
                 return;
             }
             state.customFiles = uploadData;
@@ -873,7 +879,7 @@ async function handleStep1Next() {
 
     } catch (err) {
         console.error('Error in step 1 next:', err);
-        alert('Görüntüler hazırlanırken bir hata oluştu.');
+        showToast('Görüntüler hazırlanırken bir hata oluştu.', 'error');
     } finally {
         el.btnGotoStep2.disabled = false;
         el.btnGotoStep2.innerHTML = 'Görüntüleri Getir ve 2. Adıma Geç <i class="fa-solid fa-arrow-right"></i>';
@@ -923,7 +929,7 @@ async function handleRunDetection() {
         }
 
         if (!data || !data.success) {
-            alert('Bina tespiti yapılamadı: ' + (data ? data.error : ''));
+            showToast('Bina tespiti yapılamadı: ' + (data ? data.error : ''), 'error');
             return;
         }
 
@@ -939,7 +945,7 @@ async function handleRunDetection() {
 
     } catch (err) {
         console.error('Detection error:', err);
-        alert('Bina değişim analizi sırasında hata oluştu.');
+        showToast('Bina değişim analizi sırasında hata oluştu.', 'error');
     } finally {
         el.btnRunBuildingDetection.disabled = false;
         el.btnRunBuildingDetection.innerHTML = '<i class="fa-solid fa-bolt"></i> Binaları Bul ve Değişimi Tespit Et <i class="fa-solid fa-arrow-right"></i>';
@@ -1435,24 +1441,30 @@ function initSettings() {
             const minArea = parseFloat(el.rangeSettingMinarea.value);
             localStorage.setItem('atlas_ai_settings', JSON.stringify({ threshold, minArea }));
             closeModal('modal-settings');
-            alert('Model ve tespit ayarları kaydedildi!');
+            showToast('Model ve tespit ayarları kaydedildi!', 'success');
         });
     }
     if (el.btnClearAllProjects) {
         el.btnClearAllProjects.addEventListener('click', async () => {
-            if (!confirm('Tüm kayıtlı projeleri silmek ve veritabanını sıfırlamak istediğinize emin misiniz? Bu işlem geri alınamaz.')) {
-                return;
-            }
+            const confirmed = await showConfirm({
+                title: 'Veritabanını Sıfırla',
+                message: 'Tüm kayıtlı projeleri silmek ve veritabanını sıfırlamak istediğinize emin misiniz? Bu işlem geri alınamaz.',
+                icon: 'danger',
+                confirmText: 'Evet, Sıfırla',
+                cancelText: 'Vazgeç'
+            });
+            if (!confirmed) return;
+
             try {
                 const res = await fetch('/api/projects/clear', { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
                     closeModal('modal-settings');
                     loadProjects();
-                    alert('Tüm projeler başarıyla sıfırlandı.');
+                    showToast('Tüm projeler başarıyla sıfırlandı.', 'success');
                 }
             } catch(e) {
-                alert('Projeler sıfırlanırken hata oluştu.');
+                showToast('Projeler sıfırlanırken hata oluştu.', 'error');
             }
         });
     }
@@ -1488,7 +1500,7 @@ function initModals() {
         el.btnConfirmAddCollection.addEventListener('click', () => {
             const name = el.inputNewCollectionName ? el.inputNewCollectionName.value.trim() : '';
             if (!name) {
-                alert('Lütfen bir koleksiyon adı girin.');
+                showToast('Lütfen bir koleksiyon adı girin.', 'warning');
                 return;
             }
             const colorRadio = document.querySelector('input[name="col-color"]:checked');
@@ -1496,6 +1508,7 @@ function initModals() {
             const colId = 'custom_' + Date.now();
             addCollectionToSidebar(colId, name, color, true);
             closeModal('modal-collection');
+            showToast(`"${name}" koleksiyonu eklendi.`, 'success');
         });
     }
 
