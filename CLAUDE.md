@@ -15,11 +15,10 @@ python app.py                 # serves http://127.0.0.1:5000 (debug=False, binds
 python -m pytest                   # offline test suite; pytest.ini limits collection to tests/
 python -m pytest tests/test_projects_api.py::test_project_roundtrip -v   # single test
 python download_samples.py    # fetch LEVIR-CD / DSIFN sample pairs into static/samples/<id>/{A,B,label}.png
-python test_fetch.py          # smoke test: fetch a live Wayback bitemporal pair for Istanbul
 python parse_wayback.py       # rebuild wayback_releases.json from Esri's WMTS capabilities
 ```
 
-Root-level `test_fetch.py` / `test_wayback.py` are ad-hoc network scripts, not pytest tests. `tests/snapshots/` pins the exact API output. If a snapshot test fails after a change, the change altered behavior: fix the code, and regenerate with `python -m pytest --update-snapshots` only for an intentional behavior change. An OpenCV/NumPy upgrade or a different CPU can also shift overlay hashes or last-digit floats (PNG encoder builds and NumPy's SIMD `np.cos` differ), so confirm that (e.g. re-run on the previous commit) before changing code. Run everything from the repo root: `LiveSatelliteFetcher` (`static/live_cache`) and `ProjectManager` (`data/`) use cwd-relative paths, while `app.py` resolves samples/uploads via `app.root_path`.
+`run.bat` is a Windows launcher (activates `.venv`/`venv` if present, installs missing deps, runs `app.py` from the repo root). Root-level `test_wayback.py` is an ad-hoc network script, not a pytest test. `tests/snapshots/` pins the exact API output. If a snapshot test fails after a change, the change altered behavior: fix the code, and regenerate with `python -m pytest --update-snapshots` only for an intentional behavior change. An OpenCV/NumPy upgrade or a different CPU can also shift overlay hashes or last-digit floats (PNG encoder builds and NumPy's SIMD `np.cos` differ), so confirm that (e.g. re-run on the previous commit) before changing code. Run everything from the repo root: `LiveSatelliteFetcher` (`static/live_cache`) and `ProjectManager` (`data/`) use cwd-relative paths, while `app.py` resolves samples/uploads via `app.root_path`.
 
 ## Architecture
 

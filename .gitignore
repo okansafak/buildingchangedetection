@@ -6,3 +6,6 @@ __pycache__/
 data/projects.db
 static/live_cache/
 static/uploads/
+
+# Large local sample imagery (not versioned)
+sampla_data/
