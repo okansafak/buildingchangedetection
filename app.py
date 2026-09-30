@@ -37,6 +37,10 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_UPLOAD_MB * 1024 * 1024
 
 MODEL_ERROR = "Yapay zeka modeli yüklenemedi, internet bağlantısını kontrol edin: {}"
 
+# Wayback patches are always analysed at zoom 17 (~0.9 m/px, 2x2 tiles ≈ 450 m). The map picker
+# sends its view zoom; a zoomed-out view (e.g. 14, ~7 m/px) would leave no buildings to detect.
+LIVE_ANALYSIS_ZOOM = 17
+
 
 # Cache last detection results for download
 LAST_RESULTS = {}
@@ -109,7 +113,7 @@ def run_live_detect():
     data = request.json or {}
     lat = float(data.get('lat', 41.1070))
     lon = float(data.get('lon', 28.7900))
-    zoom = int(data.get('zoom', 17))
+    zoom = LIVE_ANALYSIS_ZOOM  # the request's 'zoom' is the map view zoom, not an analysis scale
     year_t1 = str(data.get('year_t1', '2014'))
     year_t2 = str(data.get('year_t2', '2026'))
     threshold = float(data.get('threshold', 0.45))
@@ -469,5 +473,6 @@ def clear_all_projects():
     return jsonify({"success": True, "message": "Tüm projeler başarıyla sıfırlandı"})
 
 if __name__ == '__main__':
-    print("Starting Building Change Detection Server on http://127.0.0.1:5000 ...")
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    port = int(os.environ.get('PORT', 5000))
+    print(f"Starting Building Change Detection Server on http://127.0.0.1:{port} ...")
+    app.run(host='0.0.0.0', port=port, debug=False)

@@ -30,10 +30,32 @@ if errorlevel 1 (
     )
 )
 
-echo Atlas GeoChange başlatılıyor: http://127.0.0.1:5000
+rem Port başka bir uygulamada (ör. Docker) kullanılıyorsa istekler o uygulamaya gidebilir;
+rem PORT verilmemişse 5000'den başlayarak ilk boş portu seç
+if not defined PORT (
+    set PORT=5000
+    call :find_free_port
+)
+if errorlevel 1 (
+    echo [HATA] 5000-5100 arasında boş port bulunamadı.
+    pause
+    exit /b 1
+)
+
+echo Atlas GeoChange başlatılıyor: http://127.0.0.1:%PORT%
 echo Durdurmak için Ctrl+C
-start "" cmd /c "timeout /t 3 /nobreak >nul & start http://127.0.0.1:5000"
+start "" cmd /c "timeout /t 3 /nobreak >nul & start http://127.0.0.1:%PORT%"
 
 python app.py
 
 pause
+exit /b
+
+:find_free_port
+rem netstat -ano hem IPv4 hem IPv6 dinleyicilerini listeler
+netstat -ano | findstr /r /c:":%PORT% .*LISTENING" >nul
+if errorlevel 1 exit /b 0
+echo Port %PORT% kullanımda, sonraki port deneniyor...
+set /a PORT+=1
+if %PORT% gtr 5100 exit /b 1
+goto :find_free_port

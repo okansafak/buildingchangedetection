@@ -173,3 +173,12 @@ def test_live_detect_endpoint(client, fake_net):
     exported = client.get("/api/export/geojson")
     assert exported.status_code == 200
     assert json.loads(exported.get_data(as_text=True)) == body["geojson"]
+
+
+@pytest.mark.parametrize("requested_zoom", [12, 14, 16, 19])
+def test_live_detect_always_analyses_at_zoom_17(client, fake_net, requested_zoom):
+    """The map picker sends its view zoom; analysing at zoom 14 (~7 m/px) would find no buildings."""
+    res = client.post("/api/live/detect", json={"lat": LAT, "lon": LON, "zoom": requested_zoom})
+    assert res.status_code == 200
+    assert fake_net and all("/tile/" in url and f"/{ZOOM}/" in url for url in fake_net)
+    assert res.get_json()["bounds"] == pytest.approx(expected_bounds(LAT, LON, ZOOM, 2), rel=1e-12)
