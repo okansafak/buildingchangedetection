@@ -205,6 +205,8 @@ const el = {
     mapYearT2: document.getElementById('map-year-t2'),
     lblSelectedCoords: document.getElementById('lbl-selected-coords'),
     lblSelectedZoom: document.getElementById('lbl-selected-zoom'),
+    inputLiveArea: document.getElementById('input-live-area'),
+    lblLiveAreaInfo: document.getElementById('lbl-live-area-info'),
     inputUploadT1: document.getElementById('input-upload-t1'),
     inputUploadT2: document.getElementById('input-upload-t2'),
     inputWorldT1: document.getElementById('input-world-t1'),
@@ -707,6 +709,58 @@ function updateHotspotCard(hotspotId) {
     }
 }
 
+// Live Wayback patches are a grid of zoom-17 tiles centred on the point
+// (same maths as geo.centred_grid_origin on the server)
+const LIVE_ZOOM = 17;
+const MAX_LIVE_GRID = 8;
+
+function liveTileSizeM(lat) {
+    return 256 * 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, LIVE_ZOOM);
+}
+
+// Tiles per side for the side length entered in metres
+function liveGridSize() {
+    const lat = state.selectedCoords[0] || 41;
+    const side = parseFloat(el.inputLiveArea?.value) || 460;
+    return Math.min(MAX_LIVE_GRID, Math.max(1, Math.round(side / liveTileSizeM(lat))));
+}
+
+function liveGridTiles(lat, lon, n) {
+    const z2 = Math.pow(2, LIVE_ZOOM);
+    const xf = (lon + 180) / 360 * z2;
+    const yf = (1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2 * z2;
+    return {
+        x0: Math.floor(xf - n / 2 + 0.5),
+        y0: Math.floor(yf - n / 2 + 0.5),
+        lonOf: x => x / z2 * 360 - 180,
+        latOf: y => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / z2))) * 180 / Math.PI
+    };
+}
+
+// Draws the exact area (and its tile grid) that the analysis will download around the pin
+function drawLiveArea(fit = false) {
+    if (!state.selectMap) return;
+    const [lat, lon] = state.selectedCoords;
+    const n = liveGridSize();
+    const { x0, y0, lonOf, latOf } = liveGridTiles(lat, lon, n);
+    const south = latOf(y0 + n), north = latOf(y0), west = lonOf(x0), east = lonOf(x0 + n);
+    if (state.liveAreaLayer) state.liveAreaLayer.remove();
+    const layer = L.layerGroup();
+    L.rectangle([[south, west], [north, east]], { color: '#f59e0b', weight: 3, fillOpacity: 0.12, interactive: false }).addTo(layer);
+    const lineStyle = { color: '#fbbf24', weight: 2, opacity: 1, dashArray: '6 4', interactive: false };
+    for (let i = 1; i < n; i++) {
+        L.polyline([[latOf(y0 + i), west], [latOf(y0 + i), east]], lineStyle).addTo(layer);
+        L.polyline([[south, lonOf(x0 + i)], [north, lonOf(x0 + i)]], lineStyle).addTo(layer);
+    }
+    layer.addTo(state.selectMap);
+    state.liveAreaLayer = layer;
+    const sideM = Math.round(n * liveTileSizeM(lat));
+    if (el.lblLiveAreaInfo) {
+        el.lblLiveAreaInfo.textContent = `${n}×${n} karo · ~${sideM} m × ${sideM} m · T1+T2 için ${2 * n * n} karo indirilecek`;
+    }
+    if (fit) state.selectMap.fitBounds([[south, west], [north, east]], { padding: [30, 30], maxZoom: 17 });
+}
+
 // Interactive Map Picker Initialization (Step 1) with Esri Satellite Basemap
 function initSelectMap() {
     if (state.selectMap) return;
@@ -745,6 +799,7 @@ function initSelectMap() {
         if (el.lblSelectedZoom) {
             el.lblSelectedZoom.textContent = state.selectedZoom;
         }
+        drawLiveArea();
         if (!state.currentProjectId && el.inputStep1ProjectName && state.sourceType === 'map-click') {
             const coordName = `Uydu Analizi [${state.selectedCoords[0]}, ${state.selectedCoords[1]}]`;
             el.inputStep1ProjectName.value = coordName;
@@ -763,6 +818,11 @@ function initSelectMap() {
         state.selectMarker.setLatLng([lat, lon]);
         updateCoordDisplay(lat, lon);
     });
+
+    drawLiveArea();
+    if (el.inputLiveArea) {
+        el.inputLiveArea.addEventListener('change', () => drawLiveArea(true));
+    }
 
     state.selectMap.on('zoomend', () => {
         if (el.lblSelectedZoom) {
@@ -831,8 +891,32 @@ function formatArea(areaM2, areaPx) {
 }
 
 // POST /api/detect; engine "ml" answers 202 + job_id, so poll /api/jobs until the job ends
-async function runDetectionJob(payload) {
-    const res = await fetch('/api/detect', {
+// Shows a step-2 preview with the dashed tile grid the area was split into
+function showWithTileGrid(imgEl, src, n) {
+    if (!n || n <= 1) { imgEl.src = src; return; }
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.9)';
+        ctx.lineWidth = Math.max(1, img.width / 400);
+        ctx.setLineDash([8, 6]);
+        for (let i = 1; i < n; i++) {
+            const x = img.width * i / n;
+            const y = img.height * i / n;
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, img.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(img.width, y); ctx.stroke();
+        }
+        imgEl.src = canvas.toDataURL('image/jpeg', 0.9);
+    };
+    img.src = src;
+}
+
+async function runDetectionJob(payload, url = '/api/detect') {
+    const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -882,7 +966,8 @@ async function handleStep1Next() {
                 lat: state.selectedCoords[0],
                 lon: state.selectedCoords[1],
                 year_t1: y1,
-                year_t2: y2
+                year_t2: y2,
+                grid_size: isMapClick ? liveGridSize() : 2
             };
             const res = await fetch('/api/live/preview', {
                 method: 'POST',
@@ -891,8 +976,11 @@ async function handleStep1Next() {
             });
             const data = await res.json();
             if (data.success) {
-                el.imgPreviewT1.src = data.t1;
-                el.imgPreviewT2.src = data.t2;
+                showWithTileGrid(el.imgPreviewT1, data.t1, data.grid_size);
+                showWithTileGrid(el.imgPreviewT2, data.t2, data.grid_size);
+                const n = data.grid_size;
+                const sideM = Math.round(n * liveTileSizeM(state.selectedCoords[0]));
+                el.step2InfoText.textContent += ` Alan ${n}×${n} karoya bölündü (~${sideM} m × ${sideM} m).`;
             } else {
                 showToast('Uydu verisi getirilemedi: ' + (data.error || ''), 'error');
             }
@@ -972,12 +1060,10 @@ async function handleRunDetection() {
         const aiConf = getAiSettings();
 
         if (state.sourceType === 'live-hotspot' || state.sourceType === 'map-click') {
-            const res = await fetch('/api/live/detect', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...state.livePayload, min_area_m2: aiConf.minArea, engine: 'ml' })
-            });
-            data = await res.json();
+            data = await runDetectionJob(
+                { ...state.livePayload, min_area_m2: aiConf.minArea, engine: 'ml', job: true },
+                '/api/live/detect'
+            );
             state.resultsData = data;
         } else {
             if (state.sourceType === 'benchmark-set') {

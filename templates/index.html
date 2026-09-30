@@ -312,13 +312,13 @@
                                 <span style="font-size: 0.75rem; color: #38bdf8;"><i class="fa-solid fa-satellite"></i> Esri Dünya Uydu Haritası | Tıkladığınız noktaya pin konulur</span>
                             </div>
                             
-                            <div class="mini-map-wrapper" style="height: 300px; margin-bottom: 12px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.3);">
+                            <div class="mini-map-wrapper" style="height: 380px; margin-bottom: 12px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.3);">
                                 <div id="select-map" style="width: 100%; height: 100%;"></div>
                             </div>
 
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
                                 <div class="selected-coords-banner">
-                                    Seçilen Koordinat: <strong id="lbl-selected-coords">41.1070, 28.7900</strong> · Analiz alanı: noktanın çevresinde ~450 m × 450 m
+                                    Seçilen Koordinat: <strong id="lbl-selected-coords">41.1070, 28.7900</strong>
                                 </div>
                                 <div style="display: flex; gap: 6px;">
                                     <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="41.1070" data-lon="28.7900" data-zoom="17">Başakşehir</button>
@@ -326,6 +326,12 @@
                                     <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="39.8450" data-lon="32.7200" data-zoom="17">Ankara İncek</button>
                                     <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="38.4550" data-lon="27.1750" data-zoom="17">İzmir Bayraklı</button>
                                 </div>
+                            </div>
+
+                            <div class="live-area-row">
+                                <label for="input-live-area"><i class="fa-solid fa-vector-square"></i> Analiz alanı (kenar, m):</label>
+                                <input type="number" id="input-live-area" class="form-control" min="200" max="1900" step="50" value="460">
+                                <span class="live-area-info" id="lbl-live-area-info">2×2 karo · ~460 m × 460 m</span>
                             </div>
 
                             <div class="time-select-row">

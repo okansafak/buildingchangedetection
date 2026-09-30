@@ -2424,3 +2424,21 @@ input[type="range"]::-moz-range-thumb {
         grid-template-columns: 1fr;
     }
 }
+
+/* Map picker: analysis area */
+.live-area-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+    font-size: 0.8rem;
+    color: #334155;
+}
+.live-area-row input {
+    width: 110px;
+}
+.live-area-info {
+    color: #b45309;
+    font-weight: 600;
+}

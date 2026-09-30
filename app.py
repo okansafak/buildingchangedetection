@@ -110,6 +110,22 @@ def _jpeg_data_uri(image):
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode('ascii')
 
 
+MAX_LIVE_GRID = 8  # tiles per side: 8 x 8 zoom-17 tiles ≈ 1.8 km
+
+
+def _grid_size(data):
+    """Tiles per side of the live patch (default 2); ValueError with a Turkish message when invalid."""
+    value = data.get('grid_size')
+    if value is None:
+        return 2
+    if isinstance(value, bool) or not isinstance(value, (int, str)) or not str(value).isdigit():
+        raise ValueError(f"Analiz alanı 1–{MAX_LIVE_GRID} karo arasında olmalı.")
+    grid = int(value)
+    if not 1 <= grid <= MAX_LIVE_GRID:
+        raise ValueError(f"Analiz alanı 1–{MAX_LIVE_GRID} karo arasında olmalı.")
+    return grid
+
+
 @app.route('/api/live/preview', methods=['POST'])
 def live_preview():
     """T1/T2 Wayback imagery for step 2 only (tiles are cached); detection runs later via /api/live/detect."""
@@ -119,8 +135,12 @@ def live_preview():
     year_t1 = str(data.get('year_t1', '2014'))
     year_t2 = str(data.get('year_t2', '2026'))
     try:
+        grid = _grid_size(data)
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    try:
         img_t1, img_t2, bounds, gsd = live_fetcher.fetch_bitemporal_pair(
-            lat=lat, lon=lon, zoom=LIVE_ANALYSIS_ZOOM, year_t1=year_t1, year_t2=year_t2, grid_size=2
+            lat=lat, lon=lon, zoom=LIVE_ANALYSIS_ZOOM, year_t1=year_t1, year_t2=year_t2, grid_size=grid
         )
     except Exception as e:
         return jsonify({"success": False, "error": f"Canlı uydu verisi çekilirken hata oluştu: {str(e)}"}), 500
@@ -130,8 +150,41 @@ def live_preview():
         "t2": _jpeg_data_uri(img_t2),
         "bounds": bounds,
         "gsd": gsd,
+        "grid_size": grid,
         "years": {"t1": year_t1, "t2": year_t2},
     })
+
+
+def _live_detect(params, report=None):
+    """Fetch the Wayback pair for params and run the chosen engine; returns the result dict."""
+    report = report or (lambda fraction, stage: None)
+    start_time = time.time()
+    report(0.01, "Uydu karoları indiriliyor")
+    img_t1, img_t2, bounds, gsd = live_fetcher.fetch_bitemporal_pair(
+        lat=params['lat'], lon=params['lon'], zoom=LIVE_ANALYSIS_ZOOM,
+        year_t1=params['year_t1'], year_t2=params['year_t2'], grid_size=params['grid_size'],
+    )
+    if params['engine'] == 'ml':
+        tiles_ref = georef.from_bounds_wgs84(bounds, img_t2.width, img_t2.height, source="tiles")
+        result = ml_detector.detect(img_t1, img_t2, georef=tiles_ref, min_area_m2=params['min_area_m2'],
+                                    mode="fast", progress=report)
+    else:
+        result = detector.detect(
+            img1=img_t1,
+            img2=img_t2,
+            ground_truth=None,
+            threshold=params['threshold'],
+            min_area_m2=params['min_area_m2'],
+            gsd=gsd,
+            bounds=bounds
+        )
+    result["inference_time_sec"] = round(time.time() - start_time, 2)
+    result["center"] = [params['lat'], params['lon']]
+    result["mode"] = "live_satellite"
+    result["grid_size"] = params['grid_size']
+    result["years"] = {"t1": params['year_t1'], "t2": params['year_t2']}
+    LAST_RESULTS['latest'] = result
+    return result
 
 
 @app.route('/api/live/detect', methods=['POST'])
@@ -139,55 +192,37 @@ def run_live_detect():
     """
     Fetches real-time multi-temporal satellite imagery from Esri Wayback
     for any global coordinates and executes the building change detection engine.
-    engine "ml" (the UI's choice) runs the building segmentation model synchronously:
-    a 512 px Wayback patch is a single model tile per date.
+    grid_size (1-8 tiles per side, default 2) sets the analysed area. With engine "ml"
+    and job: true it runs as a background job (202 + job_id, poll /api/jobs/<id>);
+    otherwise synchronously.
     """
     data = request.json or {}
-    lat = float(data.get('lat', 41.1070))
-    lon = float(data.get('lon', 28.7900))
-    zoom = LIVE_ANALYSIS_ZOOM  # the request's 'zoom' is the map view zoom, not an analysis scale
-    year_t1 = str(data.get('year_t1', '2014'))
-    year_t2 = str(data.get('year_t2', '2026'))
-    threshold = float(data.get('threshold', 0.45))
-    min_area_m2 = float(data.get('min_area_m2', 40.0))
-    engine = data.get('engine', 'classic')
-
-    start_time = time.time()
     try:
-        # Fetch live bi-temporal satellite imagery
-        img_t1, img_t2, bounds, gsd = live_fetcher.fetch_bitemporal_pair(
-            lat=lat,
-            lon=lon,
-            zoom=zoom,
-            year_t1=year_t1,
-            year_t2=year_t2,
-            grid_size=2 # 512x512 px mosaic (~500m x 500m)
-        )
+        grid = _grid_size(data)
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    params = {
+        'lat': float(data.get('lat', 41.1070)),
+        'lon': float(data.get('lon', 28.7900)),
+        # the request's 'zoom' is the map view zoom, not an analysis scale
+        'year_t1': str(data.get('year_t1', '2014')),
+        'year_t2': str(data.get('year_t2', '2026')),
+        'threshold': float(data.get('threshold', 0.45)),
+        'min_area_m2': float(data.get('min_area_m2', 40.0)),
+        'engine': data.get('engine', 'classic'),
+        'grid_size': grid,
+    }
 
-        # Run building change detection
-        if engine == 'ml':
-            tiles_ref = georef.from_bounds_wgs84(bounds, img_t2.width, img_t2.height, source="tiles")
-            result = ml_detector.detect(img_t1, img_t2, georef=tiles_ref, min_area_m2=min_area_m2, mode="fast")
-        else:
-            result = detector.detect(
-                img1=img_t1,
-                img2=img_t2,
-                ground_truth=None,
-                threshold=threshold,
-                min_area_m2=min_area_m2,
-                gsd=gsd,
-                bounds=bounds
-            )
+    if params['engine'] == 'ml' and data.get('job'):
+        def work(report):
+            try:
+                return _live_detect(params, report)
+            except ModelUnavailable as e:
+                raise RuntimeError(MODEL_ERROR.format(e)) from e
+        return jsonify({"success": True, "job_id": jobs.submit(work)}), 202
 
-        elapsed = round(time.time() - start_time, 2)
-        result["inference_time_sec"] = elapsed
-        result["center"] = [lat, lon]
-        result["mode"] = "live_satellite"
-        result["years"] = {"t1": year_t1, "t2": year_t2}
-
-        LAST_RESULTS['latest'] = result
-        return jsonify(result)
-
+    try:
+        return jsonify(_live_detect(params))
     except ModelUnavailable as e:
         return jsonify({"success": False, "error": MODEL_ERROR.format(e)}), 503
     except Exception as e:
