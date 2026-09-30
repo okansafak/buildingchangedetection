@@ -1,6 +1,6 @@
 # ML Building Change Detection + Georeferenced / Non-Georeferenced Upload — Design
 
-Date: 2026-09-30 · Status: approved by user (research session `changedetection-20`), implementation handed to the refactor session.
+Date: 2026-09-30 · Status: approved by user (research session `changedetection-20`), implementation handed to the refactor session. Plan: `docs/superpowers/plans/2026-09-30-ml-detection-georef.md`.
 
 ## Problem (evidence gathered 2026-09-30)
 
@@ -16,8 +16,8 @@ Date: 2026-09-30 · Status: approved by user (research session `changedetection-
 |---|---|
 | Detection method | Pretrained deep model, not tuned classical CV. |
 | Model | **ChangeStar building segmentation (ViT-B), ONNX quantized** — HF `geobase/changestar-building-segmentation-vitb`, file `onnx/model_quantized.onnx` (141 MB), pinned revision `8a6d7676d2fc9ea787b8786f2f05a65989c2606c`. Input `image` (1,3,1024,1024) ImageNet-normalised; output `building_prob` (1,1,1024,1024). **Tile size must be 1024** (fixed positional embeddings). |
-| Change logic | Segment buildings in T1 and T2 separately, then match **objects** (connected components), not pixels: T2 object with no T1 support → new; T1 object with no T2 support → demolished; supported → existing; partially supported objects are split into existing + new/demolished parts. Pixel XOR was tested and rejected: parallax/misregistration produces sliver false positives on every building edge. |
-| Speed options (UI) | **"Hızlı"**: resample to ~0.5 m/px (unknown GSD → longest side 2048 px). **"Derin analiz"**: original resolution, background job with progress. |
+| Change logic | Segment buildings in T1 and T2 separately, then match **objects** (connected components), not pixels: T2 object with no T1 support → new; T1 object with no T2 support → demolished; supported → existing; partially supported objects are split into existing + new/demolished parts. "Support" is the other date's building mask dilated by a **parallax tolerance of 8 m**: the 2026 image is off-nadir and 8–12 storey roofs move 10–15 px between dates. Pixel XOR, and object matching without tolerance, paint red/green crescents on every block (2048² crop: 517 new / 341 demolished without tolerance vs. 86 / 28 with 8 m, visually correct). |
+| Speed options (UI) | **"Hızlı"**: 0.5× (half resolution) for images larger than 2048 px, as long as the halved GSD stays ≤ 1 m. **"Derin analiz"**: native resolution. Both run as a background job with tile progress. Imagery coarser than 0.5 m (Wayback zoom 17 ≈ 0.9 m) is upsampled up to 2× in both modes. Quarter resolution (≈2 m/px) was tested and rejected: hundreds of existing blocks were flagged "demolished". |
 | Georef inputs | GeoTIFF tags; world files `.jgw/.jpgw/.tfw/.tifw/.pgw/.pngw/.wld` (+ optional `.prj`); manual entry in UI (WGS84 bounding box and/or GSD, EPSG for a world file without `.prj`). |
 | Non-georef output | Pixel-space results only: `bounds`/`georef`/`centroid` = `null`, GeoJSON in pixel coordinates with `"georeferenced": false`, areas in m² only if a GSD was given, otherwise px. No fake coordinates. |
 | Coordination | Built on top of the merged backend refactor (`model/geo.py`, `model/scenarios.py`, split `detect()`), on its own branch. The classic detector stays, reachable with `engine: "classic"`; existing snapshot tests pin that path. |
@@ -26,7 +26,8 @@ Rejected: **AdaptFormer** (`deepang/adaptformer-LEVIR-CD`, MIT) — binary chang
 
 ## Measured feasibility (scratchpad prototype, CPU, quantized ONNX)
 
-- Speed: 7–11 s per 1024² tile per date. User image deep mode ≈ 45 tiles × 2 dates ≈ 10–12 min; fast mode (2048 px) ≈ 6 tiles × 2 ≈ 1.5 min; Wayback live (512 px upsampled ×2 → 1 tile) ≈ 15 s.
+- Speed: ≈8 s per 1024² tile per date. User image: fast (0.5× → 4096×2234, 15 tiles × 2) measured **213 s** end-to-end through the API; deep (45 tiles × 2) ≈ 12 min estimated; Wayback live (512 px upsampled ×1.8 → 1 tile) ≈ 15 s.
+- Fast-mode result on the whole user image: 2429 buildings (478 new / 174 demolished / 1777 existing); new buildings concentrate on the real new developments; JSON 2.7 MB with overlays written to `static/results/<run_id>/`.
 - Object-level change vs. bundled labels (no GT used in detection): levir1 F1 0.91, levir2 0.99, levir3 0.91, dsifn2 0.62, dsifn1 0.31 (dsifn1 pair is poorly co-registered and its dense village merges into one T2 blob — motivates the partial-support split rule).
 - Visual check on the user's 2020→2026 crops: new towers, new round structure and new halls correctly green; existing blocks correctly existing; shadows no longer flagged.
 
@@ -34,5 +35,5 @@ Rejected: **AdaptFormer** (`deepang/adaptformer-LEVIR-CD`, MIT) — binary chang
 
 - **License:** the geobase HF repo states no license; ChangeStar code (torchange) is Apache-2.0, but training data of these weights is not documented. Fine for the prototype; verify before commercial use.
 - Very tall off-nadir towers can shift between dates enough to be called new+demolished.
-- First run downloads 141 MB into `models/` (gitignored). Offline without cache → falls back to classic engine with a Turkish warning.
+- First run downloads 141 MB into `models/` (gitignored). Offline without cache → a clear Turkish error ("Yapay zeka modeli yüklenemedi…"). No silent fallback to the classic engine: it would bring back shadow detections and fake coordinates.
 - Deep mode on 8192×4468 needs ~1.5 GB RAM.
