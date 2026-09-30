@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas - Bina Değişim Dedektörü (Building Change Detection)</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="atlas-root">
+
+        <!-- ======================================================== -->
+        <!-- VIEW 1: ATLAS WELCOME DASHBOARD (Projelerim & Karşılama) -->
+        <!-- ======================================================== -->
+        <div class="view-screen active" id="view-dashboard">
+            <!-- Left Sidebar (Atlas style) -->
+            <aside class="atlas-sidebar">
+                <!-- Brand / Logo -->
+                <div class="atlas-brand">
+                    <div class="brand-logo-icon">
+                        <i class="fa-solid fa-circle-nodes"></i>
+                    </div>
+                    <span class="brand-name">Atlas</span>
+                </div>
+
+                <!-- + New Project Button -->
+                <button class="btn-atlas-new-proj" id="btn-sidebar-create-project">
+                    <i class="fa-solid fa-plus"></i> New project
+                </button>
+
+                <!-- Navigation List -->
+                <nav class="sidebar-menu">
+                    <a href="#" class="menu-item" id="menu-btn-discover">
+                        <i class="fa-regular fa-compass"></i> Discover
+                    </a>
+                    <a href="#" class="menu-item active" id="menu-btn-projects">
+                        <i class="fa-regular fa-folder-open"></i> Projects
+                    </a>
+                    <a href="#" class="menu-item" id="menu-btn-datasets">
+                        <i class="fa-solid fa-layer-group"></i> Datasets
+                        <span class="tag-pill">LEVIR-CD</span>
+                    </a>
+                    <a href="#" class="menu-item" id="menu-btn-settings">
+                        <i class="fa-solid fa-gear"></i> Settings
+                    </a>
+                </nav>
+
+                <div class="menu-divider"></div>
+
+                <!-- Collections Section -->
+                <div class="collections-header">
+                    <span>Collections</span>
+                    <i class="fa-solid fa-plus btn-add-collection" id="btn-add-collection" title="Yeni Koleksiyon Ekle"></i>
+                </div>
+                <div class="collections-list" id="collections-list">
+                    <div class="col-item active" data-col="all"><i class="fa-solid fa-layer-group"></i> Tüm Projeler</div>
+                    <div class="col-item" data-col="kentsel"><i class="fa-solid fa-circle text-blue"></i> Kentsel Dönüşüm</div>
+                    <div class="col-item" data-col="konut"><i class="fa-solid fa-circle text-green"></i> Toplu Konut Projeleri</div>
+                    <div class="col-item" data-col="sanayi"><i class="fa-solid fa-circle text-purple"></i> Sanayi & Altyapı</div>
+                </div>
+            </aside>
+
+            <!-- Main Dashboard Area -->
+            <main class="atlas-dashboard-main">
+                <!-- Top Navigation & Filters Bar -->
+                <header class="dashboard-topbar">
+                    <div class="topbar-left">
+                        <h1 class="projects-main-title">Projects</h1>
+                    </div>
+                    
+                    <div class="topbar-right">
+                        <div class="filter-dropdown-box">
+                            <select class="dash-select" id="dash-filter-scope" title="Kapsam Filtresi">
+                                <option value="all">Tüm Projeler</option>
+                                <option value="recent">Son Açılanlar</option>
+                                <option value="kentsel">Kentsel Dönüşüm</option>
+                                <option value="konut">Toplu Konut</option>
+                                <option value="sanayi">Sanayi & Altyapı</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-dropdown-box">
+                            <select class="dash-select" id="dash-sort-by" title="Sıralama Ölçütü">
+                                <option value="updated">Son Düzenlenen</option>
+                                <option value="created">Oluşturma Tarihi</option>
+                                <option value="name_asc">Proje Adı (A-Z)</option>
+                                <option value="area_desc">Değişim Alanı (En Yüksek)</option>
+                            </select>
+                        </div>
+
+                        <!-- Search input -->
+                        <div class="dash-search-wrapper">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="input-dash-search" class="dash-search-input" placeholder="Proje veya konum ara...">
+                        </div>
+
+                        <!-- View Grid / List Toggle -->
+                        <div class="dash-view-toggle">
+                            <button class="view-btn active" id="btn-view-grid" title="Kart Görünümü (Grid)"><i class="fa-solid fa-grip"></i></button>
+                            <button class="view-btn" id="btn-view-list" title="Liste Görünümü (List)"><i class="fa-solid fa-list"></i></button>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="dashboard-scrollable-content">
+                    <!-- Amber Workspace Notification Banner (matches screenshot) -->
+                    <div class="workspace-info-banner">
+                        <div class="banner-left-icon">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </div>
+                        <div class="banner-body-text">
+                            <strong>Bina Değişim Tespiti (Building Change Detection) Çalışma Alanı</strong>
+                            <p>Farklı zamanlarda çekilen uydu fotoğraflarından yeni inşa edilen veya yıkılan binaları yapay zeka ile tespit edip projelerinize kaydedin.</p>
+                        </div>
+                        <button class="btn-banner-action" id="btn-banner-new-project">Yeni Analiz Başlat</button>
+                    </div>
+
+                    <!-- Quick Action Cards Row (Create, Import, Templates) -->
+                    <div class="action-shortcuts-row">
+                        <!-- + Create -->
+                        <div class="shortcut-card card-create" id="btn-shortcut-create">
+                            <div class="card-create-icon"><i class="fa-solid fa-plus"></i></div>
+                            <div class="card-create-label">Create</div>
+                        </div>
+
+                        <!-- Import -->
+                        <div class="shortcut-card card-import" id="btn-shortcut-import">
+                            <div class="shortcut-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                            <div class="shortcut-label">Import</div>
+                        </div>
+
+                        <!-- Templates -->
+                        <div class="shortcut-card card-templates" id="btn-shortcut-templates">
+                            <div class="shortcut-icon"><i class="fa-solid fa-shapes"></i></div>
+                            <div class="shortcut-label">Templates</div>
+                        </div>
+                    </div>
+
+                    <!-- Recents Section -->
+                    <section class="dash-section">
+                        <div class="dash-section-head">
+                            <h2>Recents</h2>
+                        </div>
+                        <div class="projects-cards-grid" id="container-recents-projects">
+                            <!-- Injected dynamically by JS -->
+                        </div>
+                    </section>
+
+                    <!-- All Projects Section -->
+                    <section class="dash-section">
+                        <div class="dash-section-head">
+                            <h2>All projects</h2>
+                            <span class="project-count-indicator" id="lbl-all-projects-count">0 projects</span>
+                        </div>
+                        <div class="projects-cards-grid" id="container-all-projects">
+                            <!-- Injected dynamically by JS -->
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+
+
+        <!-- ======================================================== -->
+        <!-- VIEW 2: PROJECT WORKSPACE & WIZARD (Swipe Analiz Alanı) -->
+        <!-- ======================================================== -->
+        <div class="view-screen" id="view-workspace">
+            
+            <!-- Top Workspace Bar -->
+            <header class="workspace-topbar">
+                <div class="topbar-project-info">
+                    <button class="btn-back-dashboard" id="btn-back-to-dashboard" title="Projelerim ekranına dön">
+                        <i class="fa-solid fa-arrow-left"></i> <span>Projelerim</span>
+                    </button>
+                    
+                    <div class="project-title-editor">
+                        <input type="text" id="input-topbar-project-name" class="input-project-name-edit" value="Yeni Proje">
+                        <span class="badge-save-indicator" id="lbl-project-save-state">
+                            <i class="fa-solid fa-circle-check"></i> Kaydedildi
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Stepper Progress -->
+                <div class="stepper-nav">
+                    <div class="step-item active" id="step-nav-1">
+                        <span class="step-circle">1</span>
+                        <span class="step-text">Bölge & Görüntü</span>
+                    </div>
+                    <div class="step-arrow"><i class="fa-solid fa-angle-right"></i></div>
+                    <div class="step-item" id="step-nav-2">
+                        <span class="step-circle">2</span>
+                        <span class="step-text">İncele</span>
+                    </div>
+                    <div class="step-arrow"><i class="fa-solid fa-angle-right"></i></div>
+                    <div class="step-item" id="step-nav-3">
+                        <span class="step-circle">3</span>
+                        <span class="step-text">Binalar & Swipe</span>
+                    </div>
+                </div>
+
+                <!-- Right Action Buttons -->
+                <div class="topbar-actions">
+                    <button class="btn btn-primary btn-sm" id="btn-manual-save-project">
+                        <i class="fa-solid fa-floppy-disk"></i> Projeyi Kaydet
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Wizard Container -->
+            <div class="wizard-container">
+                
+                <!-- STEP 1: Bölge / Görüntü Seçimi -->
+                <section class="wizard-step-view active" id="view-step-1">
+                    <div class="step-card-container">
+                        <div class="step-heading">
+                            <h2><i class="fa-solid fa-layer-group"></i> Adım 1: Proje Adı ve Görüntü Çiftini Seçin</h2>
+                            <p>Projenize bir ad verin ve analiz edilecek iki zamanlı uydu arşivini veya fotoğraflarınızı belirleyin.</p>
+                        </div>
+
+                        <!-- Project Name Input -->
+                        <div class="form-group project-name-group" style="margin-bottom: 24px;">
+                            <label style="font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-pen-to-square" style="color: #38bdf8;"></i> Proje Başlığı:
+                            </label>
+                            <input type="text" id="input-step1-project-name" class="form-control" placeholder="Örn: Başakşehir Kentsel Gelişim Analizi" style="font-size: 1rem; font-weight: 600; padding: 12px 14px;">
+                        </div>
+
+                        <!-- Source Selector Cards (4 Options) -->
+                        <div class="source-selector-grid">
+                            <div class="source-card active" data-source="live-hotspot">
+                                <div class="source-icon"><i class="fa-solid fa-city"></i></div>
+                                <h3>Hazır Bölgeler</h3>
+                                <p>İstanbul, Ankara veya İzmir gibi kentsel gelişim alanları</p>
+                            </div>
+
+                            <div class="source-card" data-source="map-click">
+                                <div class="source-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+                                <h3>Haritadan İstediğin Yeri Seç</h3>
+                                <p>Harita üzerinde tıklayarak dünya/Türkiye'den serbest koordinat seçin</p>
+                            </div>
+
+                            <div class="source-card" data-source="custom-upload">
+                                <div class="source-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                                <h3>Kendi Fotoğraflarını Yükle</h3>
+                                <p>Bilgisayarınızdaki önceki (T1) ve sonraki (T2) fotoğrafları yükleyin</p>
+                            </div>
+
+                            <div class="source-card" data-source="benchmark-set">
+                                <div class="source-icon"><i class="fa-solid fa-database"></i></div>
+                                <h3>LEVIR-CD Benchmark</h3>
+                                <p>Literatür altın standart test çiftleriyle yapay zekayı test edin</p>
+                            </div>
+                        </div>
+
+                        <!-- Panel 1: Live Hotspot Details -->
+                        <div class="source-details-panel" id="panel-live-hotspot">
+                            <div class="form-group">
+                                <label><i class="fa-solid fa-location-dot"></i> Kentsel Gelişim Bölgesi:</label>
+                                <select id="select-hotspot" class="form-control">
+                                    <option value="istanbul_basaksehir">🇹🇷 İstanbul - Başakşehir & Kayaşehir (Yeni Şehirleşme & Toplu Konutlar)</option>
+                                    <option value="istanbul_fikirtepe">🇹🇷 İstanbul - Fikirtepe (Kentsel Dönüşüm & Gökdelenler)</option>
+                                    <option value="ankara_incek">🇹🇷 Ankara - İncek & Çayyolu (Yeni Konut Alanları & Siteler)</option>
+                                    <option value="izmir_bayrakli">🇹🇷 İzmir - Bayraklı & Yeni Kent Merkezi (Plazalar & Dönüşüm)</option>
+                                    <option value="austin_giga">🇺🇸 Austin, Teksas - Giga Texas & Sanayi Gelişimi</option>
+                                    <option value="dubai_south">🇦🇪 Dubai - South & EXPO City (Çölden Yeni Şehre)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="hotspot-summary-card">
+                                <div class="hotspot-badge" id="lbl-hotspot-name">İstanbul - Başakşehir & Kayaşehir</div>
+                                <p id="lbl-hotspot-desc">Son 12 yılda boş tarım ve otlak arazilerinden devasa toplu konut bloklarına ve şehir hastanesine dönüşüm.</p>
+                            </div>
+
+                            <div class="time-select-row">
+                                <div class="time-col">
+                                    <span class="time-tag">Zaman 1 (Eski Durum):</span>
+                                    <select id="year-t1" class="form-control">
+                                        <option value="2014" selected>2014 Yılı Uydusu</option>
+                                        <option value="2016">2016 Yılı Uydusu</option>
+                                        <option value="2018">2018 Yılı Uydusu</option>
+                                        <option value="2020">2020 Yılı Uydusu</option>
+                                    </select>
+                                </div>
+                                <div class="time-col">
+                                    <span class="time-tag">Zaman 2 (Yeni Durum):</span>
+                                    <select id="year-t2" class="form-control">
+                                        <option value="2026" selected>2026 Yılı (Güncel)</option>
+                                        <option value="2024">2024 Yılı</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel: Map Click (Interactive Map Coordinate Picker with Esri Basemap) -->
+                        <div class="source-details-panel" id="panel-map-click" style="display:none;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <label style="margin: 0; font-weight: 600; color: #38bdf8;"><i class="fa-solid fa-map-location-dot"></i> Haritada İstediğiniz Yere Tıklayın:</label>
+                                <span style="font-size: 0.75rem; color: #38bdf8;"><i class="fa-solid fa-satellite"></i> Esri Dünya Uydu Haritası | Tıkladığınız noktaya pin konulur</span>
+                            </div>
+                            
+                            <div class="mini-map-wrapper" style="height: 300px; margin-bottom: 12px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.3);">
+                                <div id="select-map" style="width: 100%; height: 100%;"></div>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                                <div class="selected-coords-banner">
+                                    Seçilen Koordinat: <strong id="lbl-selected-coords">41.1070, 28.7900</strong> (Zoom: <span id="lbl-selected-zoom">17</span>)
+                                </div>
+                                <div style="display: flex; gap: 6px;">
+                                    <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="41.1070" data-lon="28.7900" data-zoom="17">Başakşehir</button>
+                                    <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="40.9900" data-lon="29.0520" data-zoom="17">Fikirtepe</button>
+                                    <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="39.8450" data-lon="32.7200" data-zoom="17">Ankara İncek</button>
+                                    <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="38.4550" data-lon="27.1750" data-zoom="17">İzmir Bayraklı</button>
+                                </div>
+                            </div>
+
+                            <div class="time-select-row">
+                                <div class="time-col">
+                                    <span class="time-tag">Zaman 1 (Eski Durum):</span>
+                                    <select id="map-year-t1" class="form-control">
+                                        <option value="2014" selected>2014 Yılı Uydusu</option>
+                                        <option value="2016">2016 Yılı Uydusu</option>
+                                        <option value="2018">2018 Yılı Uydusu</option>
+                                        <option value="2020">2020 Yılı Uydusu</option>
+                                    </select>
+                                </div>
+                                <div class="time-col">
+                                    <span class="time-tag">Zaman 2 (Yeni Durum):</span>
+                                    <select id="map-year-t2" class="form-control">
+                                        <option value="2026" selected>2026 Yılı (Güncel)</option>
+                                        <option value="2024">2024 Yılı</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel 2: Upload Custom -->
+                        <div class="source-details-panel" id="panel-custom-upload" style="display:none;">
+                            <div class="upload-grid">
+                                <div class="upload-box">
+                                    <label><i class="fa-regular fa-image"></i> 1. Önceki Durum Fotoğrafı (T1):</label>
+                                    <input type="file" id="input-upload-t1" accept="image/*" class="file-input">
+                                </div>
+                                <div class="upload-box">
+                                    <label><i class="fa-regular fa-image"></i> 2. Sonraki Durum Fotoğrafı (T2):</label>
+                                    <input type="file" id="input-upload-t2" accept="image/*" class="file-input">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel 3: Benchmark Dataset -->
+                        <div class="source-details-panel" id="panel-benchmark-set" style="display:none;">
+                            <label><i class="fa-solid fa-database"></i> LEVIR-CD & DSIFN Örnekleri:</label>
+                            <select id="select-benchmark" class="form-control">
+                                <option value="levir1">LEVIR-CD #1: Teksas Müstakil Konut Projesi (0.5m GSD)</option>
+                                <option value="levir2">LEVIR-CD #2: Banliyö Konut Yayılması (0.5m GSD)</option>
+                                <option value="levir3">LEVIR-CD #3: Yoğun Yapılaşma ve Çatı Eklentileri</option>
+                                <option value="dsifn1">DSIFN #1: Sanayi ve Ticari Tesis İnşaatı (0.6m GSD)</option>
+                                <option value="dsifn2">DSIFN #2: Metropol Kentsel Altyapı Blokları</option>
+                            </select>
+                        </div>
+
+                        <!-- Step 1 Bottom Button -->
+                        <div class="step-action-bar">
+                            <button class="btn btn-primary btn-lg" id="btn-goto-step-2">
+                                Görüntüleri Getir ve 2. Adıma Geç <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- STEP 2: Görüntüleri İncele -->
+                <section class="wizard-step-view" id="view-step-2">
+                    <div class="step-card-container">
+                        <div class="step-heading">
+                            <h2><i class="fa-solid fa-images"></i> Adım 2: Önce ve Sonra Görüntülerini İnceleyin</h2>
+                            <p id="step-2-info-text">İki farklı zamandaki görüntüler getirildi. Kontrol ettikten sonra değişimi tespit edebilirsiniz.</p>
+                        </div>
+
+                        <!-- Dual Image Comparison Preview -->
+                        <div class="dual-preview-container">
+                            <div class="preview-card">
+                                <div class="preview-card-header">
+                                    <span class="tag-time tag-before"><i class="fa-solid fa-backward"></i> Önceki Durum (<span id="lbl-preview-t1">2014</span>)</span>
+                                </div>
+                                <div class="preview-img-box">
+                                    <img id="img-preview-t1" src="" alt="T1 Öncesi">
+                                </div>
+                            </div>
+
+                            <div class="preview-vs-badge">
+                                <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                            </div>
+
+                            <div class="preview-card">
+                                <div class="preview-card-header">
+                                    <span class="tag-time tag-after"><i class="fa-solid fa-forward"></i> Sonraki Durum (<span id="lbl-preview-t2">2026</span>)</span>
+                                </div>
+                                <div class="preview-img-box">
+                                    <img id="img-preview-t2" src="" alt="T2 Sonrası">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 2 Controls -->
+                        <div class="step-action-bar flex-between">
+                            <button class="btn btn-secondary" id="btn-back-to-step-1">
+                                <i class="fa-solid fa-arrow-left"></i> 1. Adıma Dön
+                            </button>
+                            <button class="btn btn-success btn-lg" id="btn-run-building-detection">
+                                <i class="fa-solid fa-bolt"></i> Binaları Bul ve Değişimi Tespit Et <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- STEP 3: Bina Değişim Sonuçları (Sadece Swipe Modu) -->
+                <section class="wizard-step-view" id="view-step-3">
+                    <div class="results-layout">
+                        
+                        <!-- Left: Detected Buildings List & Stats -->
+                        <aside class="results-sidebar">
+                            <div class="results-sidebar-header">
+                                <h3><i class="fa-solid fa-list-check"></i> Tespit Edilen Binalar</h3>
+                                <button class="btn btn-sm btn-outline" id="btn-restart-wizard">
+                                    <i class="fa-solid fa-rotate-left"></i> Yeni Analiz
+                                </button>
+                            </div>
+
+                            <!-- Summary Cards Grid -->
+                            <div class="summary-stat-grid">
+                                <div class="stat-pill stat-new">
+                                    <div class="stat-pill-icon"><i class="fa-solid fa-plus"></i></div>
+                                    <div>
+                                        <div class="stat-pill-val" id="res-count-new">0</div>
+                                        <div class="stat-pill-lbl">Yeni Eklenen</div>
+                                    </div>
+                                </div>
+
+                                <div class="stat-pill stat-dem">
+                                    <div class="stat-pill-icon"><i class="fa-solid fa-minus"></i></div>
+                                    <div>
+                                        <div class="stat-pill-val" id="res-count-dem">0</div>
+                                        <div class="stat-pill-lbl">Yıkılan / Kaldırılan</div>
+                                    </div>
+                                </div>
+
+                                <div class="stat-pill stat-exist">
+                                    <div class="stat-pill-icon"><i class="fa-solid fa-building"></i></div>
+                                    <div>
+                                        <div class="stat-pill-val" id="res-count-exist">0</div>
+                                        <div class="stat-pill-lbl">Mevcut Korunan</div>
+                                    </div>
+                                </div>
+
+                                <div class="stat-pill stat-total">
+                                    <div class="stat-pill-icon"><i class="fa-solid fa-ruler-combined"></i></div>
+                                    <div>
+                                        <div class="stat-pill-val" id="res-total-area">0 m²</div>
+                                        <div class="stat-pill-lbl">Toplam Değişim</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Buildings List -->
+                            <div class="building-list-header">
+                                <span>Bina Envanteri (<span id="lbl-building-count">0</span> bina):</span>
+                                <small>Tıklayarak binaya yaklaşın</small>
+                            </div>
+                            <div class="building-items-list" id="building-items-list">
+                                <!-- Populated dynamically -->
+                            </div>
+
+                            <!-- Export Buttons -->
+                            <div class="results-export-box">
+                                <button class="btn btn-outline btn-block" id="btn-export-geojson">
+                                    <i class="fa-solid fa-file-code"></i> GeoJSON İndir
+                                </button>
+                                <button class="btn btn-outline btn-block" id="btn-export-csv">
+                                    <i class="fa-solid fa-file-csv"></i> CSV Raporu İndir
+                                </button>
+                            </div>
+                        </aside>
+
+                        <!-- Right: Pure Image Swipe Comparison Viewport (Zero Basemap, Swipe Only) -->
+                        <main class="results-map-view" id="results-map-viewport">
+                            <!-- Top Swipe Status Bar -->
+                            <div class="map-view-mode-bar">
+                                <div class="swipe-banner-pill">
+                                    <span class="swipe-indicator-icon"><i class="fa-solid fa-arrows-left-right-to-line"></i></span>
+                                    <span class="swipe-indicator-title">Perde (Swipe) Karşılaştırma Modu</span>
+                                    <span class="swipe-indicator-help"><i class="fa-solid fa-hand-pointer"></i> Ortadaki mavi çubuğu sağa/sola kaydırın</span>
+                                </div>
+                                
+                                <div class="mode-years-indicator">
+                                    <span class="badge-year tag-before" id="badge-year-t1"><i class="fa-solid fa-backward"></i> Solda 1. Görüntü: <strong id="lbl-swipe-y1">2014</strong></span>
+                                    <i class="fa-solid fa-arrow-right" style="font-size:0.75rem;color:#94a3b8;"></i>
+                                    <span class="badge-year tag-after" id="badge-year-t2"><i class="fa-solid fa-forward"></i> Sağda 2. Görüntü: <strong id="lbl-swipe-y2">2026</strong></span>
+                                </div>
+
+                                <div class="swipe-controls-group">
+                                    <button type="button" class="btn btn-outline btn-sm" id="btn-toggle-polygons" title="Tüm bina sınırlarını aç/kapat">
+                                        <i class="fa-solid fa-draw-polygon"></i> <span id="lbl-toggle-poly">Tüm Vektörleri Gizle</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Interactive Swipe Stage Area -->
+                            <div class="swipe-stage-outer" id="swipe-stage-outer">
+                                
+                                <!-- Floating Zoom & View Toolbar -->
+                                <div class="stage-zoom-toolbar">
+                                    <button type="button" class="btn-zoom-tool" id="btn-zoom-in" title="Yaklaş (+)"><i class="fa-solid fa-plus"></i></button>
+                                    <button type="button" class="btn-zoom-tool" id="btn-zoom-out" title="Uzaklaş (-)"><i class="fa-solid fa-minus"></i></button>
+                                    <button type="button" class="btn-zoom-tool" id="btn-zoom-reset" title="Sığdır (Fit)"><i class="fa-solid fa-expand"></i></button>
+                                    <span class="zoom-level-badge" id="lbl-zoom-level">100%</span>
+                                </div>
+
+                                <!-- Floating Vector Layer Toggles Card -->
+                                <div class="floating-layer-card" id="floating-layer-card">
+                                    <div class="layer-card-title">
+                                        <i class="fa-solid fa-layer-group"></i> Vektör Katmanları
+                                    </div>
+                                    <div class="layer-card-items">
+                                        <label class="layer-toggle-row">
+                                            <input type="checkbox" id="chk-layer-new" checked>
+                                            <span class="layer-dot dot-new"></span>
+                                            <span class="layer-label">Yeni Eklenen Binalar</span>
+                                            <span class="layer-badge badge-new" id="layer-badge-new">0</span>
+                                        </label>
+                                        <label class="layer-toggle-row">
+                                            <input type="checkbox" id="chk-layer-dem" checked>
+                                            <span class="layer-dot dot-dem"></span>
+                                            <span class="layer-label">Yıkılan Binalar</span>
+                                            <span class="layer-badge badge-dem" id="layer-badge-dem">0</span>
+                                        </label>
+                                        <label class="layer-toggle-row">
+                                            <input type="checkbox" id="chk-layer-exist" checked>
+                                            <span class="layer-dot dot-exist"></span>
+                                            <span class="layer-label">Mevcut Binalar</span>
+                                            <span class="layer-badge badge-exist" id="layer-badge-exist">0</span>
+                                        </label>
+                                        <div class="layer-sep"></div>
+                                        <label class="layer-toggle-row">
+                                            <input type="checkbox" id="chk-layer-labels" checked>
+                                            <span class="layer-icon-tag"><i class="fa-solid fa-tag"></i></span>
+                                            <span class="layer-label">Bina Numaraları</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- The Stage Viewport & Scalable Content -->
+                                <div class="swipe-stage-viewport" id="swipe-stage-viewport">
+                                    <div class="swipe-stage-content" id="swipe-stage-content">
+                                        
+                                        <!-- T2 Base Image (Sonraki Durum - Sağ tarafta görünür) -->
+                                        <img id="stage-img-t2" class="stage-img stage-img-base" src="" alt="2. Sonraki Durum">
+
+                                        <!-- T1 Clipped Overlay Image (Önceki Durum - Sol tarafta görünür) -->
+                                        <div class="stage-t1-clipper" id="stage-t1-clipper">
+                                            <img id="stage-img-t1" class="stage-img stage-img-overlay" src="" alt="1. Önceki Durum">
+                                        </div>
+
+                                        <!-- SVG Vector Overlay for Building Polygons and Labels -->
+                                        <svg id="stage-vector-svg" class="stage-vector-svg" viewBox="0 0 512 512" preserveAspectRatio="none">
+                                            <g id="svg-group-exist" class="svg-group"></g>
+                                            <g id="svg-group-new" class="svg-group"></g>
+                                            <g id="svg-group-dem" class="svg-group"></g>
+                                            <g id="svg-group-labels" class="svg-group"></g>
+                                        </svg>
+
+                                        <!-- Swipe Divider Line & Central Handle -->
+                                        <div class="swipe-divider-line" id="swipe-divider-line">
+                                            <div class="swipe-divider-handle" id="swipe-divider-handle">
+                                                <i class="fa-solid fa-arrows-left-right"></i>
+                                            </div>
+                                        </div>
+
+                                        <!-- Tooltip for hovered building -->
+                                        <div class="building-hover-tooltip" id="building-hover-tooltip"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Corner Labels for Instant Clarity -->
+                                <div class="swipe-tag swipe-tag-left" id="swipe-tag-left">
+                                    <i class="fa-solid fa-backward"></i> <strong>Solda: 1. Görüntü</strong> (<span id="lbl-swipe-y1-tag">2014</span> - Önceki)
+                                </div>
+                                <div class="swipe-tag swipe-tag-right" id="swipe-tag-right">
+                                    <strong>Sağda: 2. Görüntü</strong> (<span id="lbl-swipe-y2-tag">2026</span> - Sonraki) <i class="fa-solid fa-forward"></i>
+                                </div>
+                            </div>
+                        </main>
+
+                    </div>
+                </section>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- MODAL 1: DISCOVER (KEŞFET & HAZIR BÖLGELER)              -->
+    <!-- ======================================================== -->
+    <div class="atlas-modal-backdrop" id="modal-discover">
+        <div class="atlas-modal-card modal-lg">
+            <div class="atlas-modal-header">
+                <div class="modal-title-wrap">
+                    <i class="fa-regular fa-compass modal-title-icon text-blue"></i>
+                    <div>
+                        <h3>Keşfet: Kentsel Gelişim & Değişim Alanları</h3>
+                        <p>Dünyadan ve Türkiye'den hazır uydu arşivleri. Tek tıkla analiz başlatabilirsiniz.</p>
+                    </div>
+                </div>
+                <button class="btn-modal-close" data-close="modal-discover"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="atlas-modal-body">
+                <div class="discover-grid">
+                    <div class="discover-card" data-hotspot="istanbul_basaksehir">
+                        <div class="discover-badge">İstanbul</div>
+                        <h4>🇹🇷 Başakşehir & Kayaşehir</h4>
+                        <p>Son 12 yılda boş otlak arazilerinden dev toplu konut bloklarına ve şehir hastanesine dönüşüm.</p>
+                        <div class="discover-footer">
+                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2014 → 2026</span>
+                            <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
+                        </div>
+                    </div>
+
+                    <div class="discover-card" data-hotspot="istanbul_fikirtepe">
+                        <div class="discover-badge">İstanbul</div>
+                        <h4>🇹🇷 Kadıköy - Fikirtepe</h4>
+                        <p>Eski gecekondulardan ultra lüks rezidans kulelerine ve yeni ulaşım akslarına kentsel dönüşüm.</p>
+                        <div class="discover-footer">
+                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2014 → 2026</span>
+                            <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
+                        </div>
+                    </div>
+
+                    <div class="discover-card" data-hotspot="ankara_incek">
+                        <div class="discover-badge">Ankara</div>
+                        <h4>🇹🇷 İncek & Çayyolu</h4>
+                        <p>Gölbaşı ve İncek aksında villalar, yeni site projeleri ve kamu kampüsleri genişlemesi.</p>
+                        <div class="discover-footer">
+                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2014 → 2026</span>
+                            <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
+                        </div>
+                    </div>
+
+                    <div class="discover-card" data-hotspot="izmir_bayrakli">
+                        <div class="discover-badge">İzmir</div>
+                        <h4>🇹🇷 Bayraklı Yeni Kent Merkezi</h4>
+                        <p>İzmir körfezi kıyısında gökdelenler, plazalar ve adliye çevresi yeni yapılaşma.</p>
+                        <div class="discover-footer">
+                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2014 → 2026</span>
+                            <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
+                        </div>
+                    </div>
+
+                    <div class="discover-card" data-hotspot="austin_giga">
+                        <div class="discover-badge">ABD</div>
+                        <h4>🇺🇸 Austin, Teksas - Giga Texas</h4>
+                        <p>Boş tarım ve nehir arazisinde kurulan devasa Tesla Gigafactory ve sanayi tesisleri.</p>
+                        <div class="discover-footer">
+                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2018 → 2024</span>
+                            <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
+                        </div>
+                    </div>
+
+                    <div class="discover-card" data-hotspot="dubai_south">
+                        <div class="discover-badge">BAE</div>
+                        <h4>🇦🇪 Dubai - South & EXPO City</h4>
+                        <p>Çöl arazisinde sıfırdan inşa edilen dev EXPO şehri, havalimanı ve lojistik merkezler.</p>
+                        <div class="discover-footer">
+                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2016 → 2024</span>
+                            <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- MODAL 2: DATASETS (LEVIR-CD & DSIFN BENCHMARK)            -->
+    <!-- ======================================================== -->
+    <div class="atlas-modal-backdrop" id="modal-datasets">
+        <div class="atlas-modal-card modal-md">
+            <div class="atlas-modal-header">
+                <div class="modal-title-wrap">
+                    <i class="fa-solid fa-layer-group modal-title-icon text-green"></i>
+                    <div>
+                        <h3>Literatür Benchmark Verisetleri (LEVIR-CD)</h3>
+                        <p>Yapay zeka modellerini test etmek için standart çiftler.</p>
+                    </div>
+                </div>
+                <button class="btn-modal-close" data-close="modal-datasets"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="atlas-modal-body">
+                <div class="benchmark-modal-list">
+                    <div class="benchmark-modal-row" data-benchmark="levir1">
+                        <div>
+                            <strong>LEVIR-CD #1: Teksas Müstakil Konut Projesi</strong>
+                            <p>0.5m GSD yüksek çözünürlüklü konut inşaatı ve temel atımları.</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm btn-run-benchmark">Test Et</button>
+                    </div>
+
+                    <div class="benchmark-modal-row" data-benchmark="levir2">
+                        <div>
+                            <strong>LEVIR-CD #2: Banliyö Konut Yayılması</strong>
+                            <p>0.5m GSD müstakil yerleşim ve çatı eklentileri değişimi.</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm btn-run-benchmark">Test Et</button>
+                    </div>
+
+                    <div class="benchmark-modal-row" data-benchmark="levir3">
+                        <div>
+                            <strong>LEVIR-CD #3: Yoğun Yapılaşma ve Ticari Binalar</strong>
+                            <p>Büyük kütleli yapılar ve otopark dönüşümleri.</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm btn-run-benchmark">Test Et</button>
+                    </div>
+
+                    <div class="benchmark-modal-row" data-benchmark="dsifn1">
+                        <div>
+                            <strong>DSIFN #1: Sanayi ve Ticari Tesisler</strong>
+                            <p>0.6m GSD fabrika hangarları ve lojistik merkez gelişimi.</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm btn-run-benchmark">Test Et</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- MODAL 3: SETTINGS (UYGULAMA VE MODEL AYARLARI)          -->
+    <!-- ======================================================== -->
+    <div class="atlas-modal-backdrop" id="modal-settings">
+        <div class="atlas-modal-card modal-sm">
+            <div class="atlas-modal-header">
+                <div class="modal-title-wrap">
+                    <i class="fa-solid fa-gear modal-title-icon text-purple"></i>
+                    <div>
+                        <h3>Uygulama & Model Ayarları</h3>
+                        <p>Yapay zeka tespit duyarlılığı ve depolama tercihleri.</p>
+                    </div>
+                </div>
+                <button class="btn-modal-close" data-close="modal-settings"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="atlas-modal-body">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; display:flex; justify-content:space-between; color: var(--text-primary);">
+                        <span>Yapay Zeka Eşik Değeri (Threshold):</span>
+                        <strong id="lbl-setting-threshold" style="color: #60a5fa;">0.45</strong>
+                    </label>
+                    <input type="range" id="range-setting-threshold" min="0.1" max="0.9" step="0.05" value="0.45">
+                    <small style="color: var(--text-muted);">Düşük değer daha fazla bina bulur, yüksek değer sadece kesin binaları alır.</small>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; display:flex; justify-content:space-between; color: var(--text-primary);">
+                        <span>Minimum Bina Taban Alanı (m²):</span>
+                        <strong id="lbl-setting-minarea" style="color: #60a5fa;">30 m²</strong>
+                    </label>
+                    <input type="range" id="range-setting-minarea" min="10" max="200" step="5" value="30">
+                    <small style="color: var(--text-muted);">Bu alandan küçük küçük kulübe ve gürültüler elenir.</small>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: var(--text-primary);">Proje Veritabanı:</label>
+                    <input type="text" class="form-control" value="data/projects.db (SQLite Veritabanı)" disabled style="background: var(--bg-card-hover); color: var(--text-muted); border-color: var(--border-color);">
+                </div>
+
+                <div class="modal-actions-between" style="display:flex; justify-content:space-between; align-items:center;">
+                    <button class="btn btn-outline btn-sm text-danger" id="btn-clear-all-projects">
+                        <i class="fa-solid fa-trash-can"></i> Tüm Projeleri Sıfırla
+                    </button>
+                    <button class="btn btn-primary btn-sm" id="btn-save-settings">
+                        <i class="fa-solid fa-check"></i> Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- MODAL 4: NEW COLLECTION (YENİ KOLEKSİYON EKLE)          -->
+    <!-- ======================================================== -->
+    <div class="atlas-modal-backdrop" id="modal-collection">
+        <div class="atlas-modal-card modal-sm">
+            <div class="atlas-modal-header">
+                <div class="modal-title-wrap">
+                    <i class="fa-solid fa-folder-plus modal-title-icon text-blue"></i>
+                    <div>
+                        <h3>Yeni Koleksiyon Oluştur</h3>
+                        <p>Projelerinizi kategorilere ayırmak için bir koleksiyon tanımlayın.</p>
+                    </div>
+                </div>
+                <button class="btn-modal-close" data-close="modal-collection"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="atlas-modal-body">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; color: var(--text-primary);">Koleksiyon Adı:</label>
+                    <input type="text" id="input-new-collection-name" class="form-control" placeholder="Örn: Turizm & Otel Projeleri">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: var(--text-primary);">Renk Etiketi:</label>
+                    <div class="color-picker-row">
+                        <label class="color-radio"><input type="radio" name="col-color" value="blue" checked><span class="col-dot text-blue"></span></label>
+                        <label class="color-radio"><input type="radio" name="col-color" value="green"><span class="col-dot text-green"></span></label>
+                        <label class="color-radio"><input type="radio" name="col-color" value="purple"><span class="col-dot text-purple"></span></label>
+                        <label class="color-radio"><input type="radio" name="col-color" value="amber"><span class="col-dot text-amber"></span></label>
+                        <label class="color-radio"><input type="radio" name="col-color" value="rose"><span class="col-dot text-rose"></span></label>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:8px;">
+                    <button class="btn btn-secondary btn-sm" data-close="modal-collection">İptal</button>
+                    <button class="btn btn-primary btn-sm" id="btn-confirm-add-collection">Koleksiyon Ekle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="atlas-toast-container" id="atlas-toast-container"></div>
+
+    <!-- Leaflet JS (Engine for pan-zoom in L.CRS.Simple pixel space) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Application JS -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

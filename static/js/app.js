@@ -1,0 +1,1746 @@
+/**
+ * Atlas GeoChange - Building Change Detection & Project Workspace
+ * Clean Atlas UI Theme + Pure Image Swipe Comparison Engine
+ * L.CRS.Simple Pixel Space Engine
+ */
+
+// ==========================================
+// TOAST NOTIFICATION SYSTEM
+// ==========================================
+const TOAST_ICONS = {
+    success: 'fa-solid fa-circle-check',
+    error: 'fa-solid fa-circle-exclamation',
+    warning: 'fa-solid fa-triangle-exclamation',
+    info: 'fa-solid fa-circle-info'
+};
+
+function showToast(message, type = 'info', duration = 3500) {
+    const container = document.getElementById('atlas-toast-container');
+    if (!container) { console.log(`[Toast ${type}] ${message}`); return; }
+
+    const toast = document.createElement('div');
+    toast.className = `atlas-toast toast-${type}`;
+    toast.innerHTML = `
+        <i class="atlas-toast-icon ${TOAST_ICONS[type] || TOAST_ICONS.info}"></i>
+        <span class="atlas-toast-text">${message}</span>
+        <button class="atlas-toast-close" onclick="this.parentElement.classList.add('toast-leaving'); setTimeout(() => this.parentElement.remove(), 300);">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.classList.add('toast-leaving');
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
+
+function showConfirm({ title = 'Emin misiniz?', message = '', icon = 'danger', confirmText = 'Evet', cancelText = 'İptal' }) {
+    return new Promise((resolve) => {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'atlas-confirm-backdrop';
+
+        const iconClass = icon === 'danger' ? 'fa-solid fa-trash-can'
+            : icon === 'warning' ? 'fa-solid fa-triangle-exclamation'
+            : 'fa-solid fa-circle-info';
+
+        backdrop.innerHTML = `
+            <div class="atlas-confirm-card">
+                <div class="atlas-confirm-icon icon-${icon}">
+                    <i class="${iconClass}"></i>
+                </div>
+                <div class="atlas-confirm-title">${title}</div>
+                <div class="atlas-confirm-message">${message}</div>
+                <div class="atlas-confirm-actions">
+                    <button class="btn btn-secondary btn-sm" id="atlas-confirm-cancel">${cancelText}</button>
+                    <button class="btn btn-${icon === 'danger' ? 'danger' : 'primary'} btn-sm" id="atlas-confirm-ok">${confirmText}</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(backdrop);
+
+        const cleanup = (result) => {
+            backdrop.style.opacity = '0';
+            backdrop.style.transition = 'opacity 0.2s ease';
+            setTimeout(() => backdrop.remove(), 200);
+            resolve(result);
+        };
+
+        backdrop.querySelector('#atlas-confirm-cancel').addEventListener('click', () => cleanup(false));
+        backdrop.querySelector('#atlas-confirm-ok').addEventListener('click', () => cleanup(true));
+        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) cleanup(false); });
+    });
+}
+
+// Application State
+const state = {
+    // Screen Navigation ('dashboard' or 'workspace')
+    activeScreen: 'dashboard',
+    currentProjectId: null,
+    currentProjectName: 'Yeni Bina Değişim Projesi',
+    projectsList: [],
+    
+    // Wizard Steps (1: Select, 2: Preview, 3: Results)
+    currentStep: 1,
+    sourceType: 'live-hotspot',
+    
+    // Live Hotspots & Map Selection (Step 1)
+    hotspots: {},
+    currentHotspotId: 'istanbul_basaksehir',
+    selectedCoords: [41.1070, 28.7900],
+    selectedZoom: 17,
+    selectMap: null,
+    selectMarker: null,
+    
+    // Benchmarks & Uploads
+    currentBenchmarkId: 'levir1',
+    customFiles: null,
+    
+    // Results & Swipe Stage
+    resultsData: null,
+    swipePosPct: 50,
+    isDraggingSwipe: false,
+    
+    // Pan & Zoom on Stage
+    zoomScale: 1.0,
+    panX: 0,
+    panY: 0,
+    isPanning: false,
+    panStartX: 0,
+    panStartY: 0,
+    allVectorsVisible: true,
+    
+    // Highlighted Building
+    selectedBuildingId: null,
+
+    // View Mode & Filters
+    viewMode: localStorage.getItem('atlas_view_mode') || 'grid',
+    activeFilterScope: 'all',
+    activeSortBy: 'updated',
+    activeCollection: 'all'
+};
+
+// DOM References
+const el = {
+    // Screen Views
+    viewDashboard: document.getElementById('view-dashboard'),
+    viewWorkspace: document.getElementById('view-workspace'),
+    
+    // Dashboard Sidebar & Header
+    btnSidebarCreateProject: document.getElementById('btn-sidebar-create-project'),
+    btnBannerNewProject: document.getElementById('btn-banner-new-project'),
+    btnShortcutCreate: document.getElementById('btn-shortcut-create'),
+    btnShortcutImport: document.getElementById('btn-shortcut-import'),
+    btnShortcutTemplates: document.getElementById('btn-shortcut-templates'),
+    inputDashSearch: document.getElementById('input-dash-search'),
+    dashFilterScope: document.getElementById('dash-filter-scope'),
+    dashSortBy: document.getElementById('dash-sort-by'),
+    btnViewGrid: document.getElementById('btn-view-grid'),
+    btnViewList: document.getElementById('btn-view-list'),
+    containerRecentsProjects: document.getElementById('container-recents-projects'),
+    containerAllProjects: document.getElementById('container-all-projects'),
+    lblAllProjectsCount: document.getElementById('lbl-all-projects-count'),
+
+    // Sidebar Menu & Collections
+    menuBtnDiscover: document.getElementById('menu-btn-discover'),
+    menuBtnProjects: document.getElementById('menu-btn-projects'),
+    menuBtnDatasets: document.getElementById('menu-btn-datasets'),
+    menuBtnSettings: document.getElementById('menu-btn-settings'),
+    collectionsList: document.getElementById('collections-list'),
+    btnAddCollection: document.getElementById('btn-add-collection'),
+
+    // Modals
+    modalDiscover: document.getElementById('modal-discover'),
+    modalDatasets: document.getElementById('modal-datasets'),
+    modalSettings: document.getElementById('modal-settings'),
+    modalCollection: document.getElementById('modal-collection'),
+
+    // Settings Modal Controls
+    rangeSettingThreshold: document.getElementById('range-setting-threshold'),
+    lblSettingThreshold: document.getElementById('lbl-setting-threshold'),
+    rangeSettingMinarea: document.getElementById('range-setting-minarea'),
+    lblSettingMinarea: document.getElementById('lbl-setting-minarea'),
+    btnSaveSettings: document.getElementById('btn-save-settings'),
+    btnClearAllProjects: document.getElementById('btn-clear-all-projects'),
+
+    // Collection Modal Controls
+    inputNewCollectionName: document.getElementById('input-new-collection-name'),
+    btnConfirmAddCollection: document.getElementById('btn-confirm-add-collection'),
+    
+    // Workspace Topbar
+    btnBackToDashboard: document.getElementById('btn-back-to-dashboard'),
+    inputTopbarProjectName: document.getElementById('input-topbar-project-name'),
+    lblProjectSaveState: document.getElementById('lbl-project-save-state'),
+    btnManualSaveProject: document.getElementById('btn-manual-save-project'),
+    
+    // Stepper Nav
+    stepNavs: [
+        document.getElementById('step-nav-1'),
+        document.getElementById('step-nav-2'),
+        document.getElementById('step-nav-3')
+    ],
+    views: [
+        document.getElementById('view-step-1'),
+        document.getElementById('view-step-2'),
+        document.getElementById('view-step-3')
+    ],
+    
+    // Step 1
+    inputStep1ProjectName: document.getElementById('input-step1-project-name'),
+    sourceCards: document.querySelectorAll('.source-card'),
+    panels: {
+        'live-hotspot': document.getElementById('panel-live-hotspot'),
+        'map-click': document.getElementById('panel-map-click'),
+        'custom-upload': document.getElementById('panel-custom-upload'),
+        'benchmark-set': document.getElementById('panel-benchmark-set')
+    },
+    selectHotspot: document.getElementById('select-hotspot'),
+    lblHotspotName: document.getElementById('lbl-hotspot-name'),
+    lblHotspotDesc: document.getElementById('lbl-hotspot-desc'),
+    yearT1: document.getElementById('year-t1'),
+    yearT2: document.getElementById('year-t2'),
+    mapYearT1: document.getElementById('map-year-t1'),
+    mapYearT2: document.getElementById('map-year-t2'),
+    lblSelectedCoords: document.getElementById('lbl-selected-coords'),
+    lblSelectedZoom: document.getElementById('lbl-selected-zoom'),
+    inputUploadT1: document.getElementById('input-upload-t1'),
+    inputUploadT2: document.getElementById('input-upload-t2'),
+    selectBenchmark: document.getElementById('select-benchmark'),
+    btnGotoStep2: document.getElementById('btn-goto-step-2'),
+    
+    // Step 2
+    step2InfoText: document.getElementById('step-2-info-text'),
+    lblPreviewT1: document.getElementById('lbl-preview-t1'),
+    lblPreviewT2: document.getElementById('lbl-preview-t2'),
+    imgPreviewT1: document.getElementById('img-preview-t1'),
+    imgPreviewT2: document.getElementById('img-preview-t2'),
+    btnBackToStep1: document.getElementById('btn-back-to-step-1'),
+    btnRunBuildingDetection: document.getElementById('btn-run-building-detection'),
+    
+    // Step 3
+    btnRestartWizard: document.getElementById('btn-restart-wizard'),
+    resCountNew: document.getElementById('res-count-new'),
+    resCountDem: document.getElementById('res-count-dem'),
+    resCountExist: document.getElementById('res-count-exist'),
+    resTotalArea: document.getElementById('res-total-area'),
+    lblBuildingCount: document.getElementById('lbl-building-count'),
+    buildingItemsList: document.getElementById('building-items-list'),
+    
+    // Swipe Bar & Mode
+    badgeYearT1: document.getElementById('badge-year-t1'),
+    badgeYearT2: document.getElementById('badge-year-t2'),
+    lblSwipeY1: document.getElementById('lbl-swipe-y1'),
+    lblSwipeY2: document.getElementById('lbl-swipe-y2'),
+    lblSwipeY1Tag: document.getElementById('lbl-swipe-y1-tag'),
+    lblSwipeY2Tag: document.getElementById('lbl-swipe-y2-tag'),
+    btnTogglePolygons: document.getElementById('btn-toggle-polygons'),
+    lblTogglePoly: document.getElementById('lbl-toggle-poly'),
+    
+    // Swipe Stage & Canvas Elements
+    swipeStageOuter: document.getElementById('swipe-stage-outer'),
+    swipeStageViewport: document.getElementById('swipe-stage-viewport'),
+    swipeStageContent: document.getElementById('swipe-stage-content'),
+    stageImgT2: document.getElementById('stage-img-t2'),
+    stageImgT1: document.getElementById('stage-img-t1'),
+    stageT1Clipper: document.getElementById('stage-t1-clipper'),
+    stageVectorSvg: document.getElementById('stage-vector-svg'),
+    svgGroupExist: document.getElementById('svg-group-exist'),
+    svgGroupNew: document.getElementById('svg-group-new'),
+    svgGroupDem: document.getElementById('svg-group-dem'),
+    svgGroupLabels: document.getElementById('svg-group-labels'),
+    swipeDividerLine: document.getElementById('swipe-divider-line'),
+    swipeDividerHandle: document.getElementById('swipe-divider-handle'),
+    buildingHoverTooltip: document.getElementById('building-hover-tooltip'),
+    
+    // Floating Vector Layer Checkboxes
+    chkLayerNew: document.getElementById('chk-layer-new'),
+    chkLayerDem: document.getElementById('chk-layer-dem'),
+    chkLayerExist: document.getElementById('chk-layer-exist'),
+    chkLayerLabels: document.getElementById('chk-layer-labels'),
+    layerBadgeNew: document.getElementById('layer-badge-new'),
+    layerBadgeDem: document.getElementById('layer-badge-dem'),
+    layerBadgeExist: document.getElementById('layer-badge-exist'),
+    
+    // Zoom & Reset Toolbar
+    btnZoomIn: document.getElementById('btn-zoom-in'),
+    btnZoomOut: document.getElementById('btn-zoom-out'),
+    btnZoomReset: document.getElementById('btn-zoom-reset'),
+    lblZoomLevel: document.getElementById('lbl-zoom-level'),
+    
+    // Corner tags
+    swipeTagLeft: document.getElementById('swipe-tag-left'),
+    swipeTagRight: document.getElementById('swipe-tag-right'),
+    
+    btnExportGeoJson: document.getElementById('btn-export-geojson'),
+    btnExportCsv: document.getElementById('btn-export-csv')
+};
+
+// ==========================================
+// SCREEN SWITCHING (Dashboard vs Workspace)
+// ==========================================
+function switchScreen(screen) {
+    state.activeScreen = screen;
+    if (screen === 'dashboard') {
+        el.viewDashboard.classList.add('active');
+        el.viewWorkspace.classList.remove('active');
+        loadProjects();
+    } else {
+        el.viewWorkspace.classList.add('active');
+        el.viewDashboard.classList.remove('active');
+        setTimeout(() => {
+            if (state.currentStep === 3) {
+                updateSwipeDivider(state.swipePosPct);
+            }
+        }, 100);
+    }
+}
+
+// Wizard Step Navigation inside Workspace
+function goToStep(step) {
+    state.currentStep = step;
+    
+    el.stepNavs.forEach((nav, idx) => {
+        const stepNum = idx + 1;
+        nav.classList.remove('active', 'completed');
+        if (stepNum === step) {
+            nav.classList.add('active');
+        } else if (stepNum < step) {
+            nav.classList.add('completed');
+        }
+    });
+    
+    el.views.forEach((view, idx) => {
+        if (idx + 1 === step) {
+            view.classList.add('active');
+        } else {
+            view.classList.remove('active');
+        }
+    });
+
+    if (step === 3) {
+        setTimeout(() => {
+            updateSwipeDivider(state.swipePosPct);
+        }, 100);
+    }
+}
+
+// ==========================================
+// PROJECTS PERSISTENCE & API
+// ==========================================
+async function loadProjects(searchQuery = '') {
+    try {
+        const q = searchQuery !== '' ? searchQuery : (el.inputDashSearch ? el.inputDashSearch.value : '');
+        const res = await fetch(`/api/projects?search=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (data.success) {
+            state.projectsList = data.projects || [];
+            applyFilterAndSort();
+        }
+    } catch (err) {
+        console.error('Error loading projects:', err);
+    }
+}
+
+function applyFilterAndSort() {
+    let list = [...state.projectsList];
+
+    // 1. Filter by Scope / Collection
+    const scope = state.activeFilterScope;
+    if (scope === 'recent') {
+        list = list.slice(0, 5);
+    } else if (scope === 'kentsel') {
+        list = list.filter(p => {
+            const str = ((p.name || '') + ' ' + (p.location_name || '') + ' ' + (p.collection || '')).toLowerCase();
+            return str.includes('kentsel') || str.includes('fikirtepe') || str.includes('kadıköy');
+        });
+    } else if (scope === 'konut') {
+        list = list.filter(p => {
+            const str = ((p.name || '') + ' ' + (p.location_name || '') + ' ' + (p.collection || '')).toLowerCase();
+            return str.includes('konut') || str.includes('başakşehir') || str.includes('kayaşehir') || str.includes('incek') || str.includes('müstakil') || str.includes('teksas');
+        });
+    } else if (scope === 'sanayi') {
+        list = list.filter(p => {
+            const str = ((p.name || '') + ' ' + (p.location_name || '') + ' ' + (p.collection || '')).toLowerCase();
+            return str.includes('sanayi') || str.includes('austin') || str.includes('giga') || str.includes('dubai') || str.includes('fabrika') || str.includes('lojistik');
+        });
+    } else if (scope && scope !== 'all') {
+        // Custom collection filter
+        list = list.filter(p => p.collection === scope);
+    }
+
+    // 2. Sort
+    const sort = state.activeSortBy;
+    if (sort === 'name_asc') {
+        list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr'));
+    } else if (sort === 'area_desc') {
+        list.sort((a, b) => ((b.stats?.total_changed_m2 || 0) - (a.stats?.total_changed_m2 || 0)));
+    } else if (sort === 'created') {
+        list.sort((a, b) => (new Date(b.created_at || 0) - new Date(a.created_at || 0)));
+    } else {
+        // 'updated'
+        list.sort((a, b) => (new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0)));
+    }
+
+    renderProjectsList(list);
+}
+
+function setViewMode(mode) {
+    state.viewMode = mode;
+    if (mode === 'list') {
+        if (el.btnViewList) el.btnViewList.classList.add('active');
+        if (el.btnViewGrid) el.btnViewGrid.classList.remove('active');
+        if (el.containerRecentsProjects) el.containerRecentsProjects.classList.add('view-list-mode');
+        if (el.containerAllProjects) el.containerAllProjects.classList.add('view-list-mode');
+    } else {
+        if (el.btnViewGrid) el.btnViewGrid.classList.add('active');
+        if (el.btnViewList) el.btnViewList.classList.remove('active');
+        if (el.containerRecentsProjects) el.containerRecentsProjects.classList.remove('view-list-mode');
+        if (el.containerAllProjects) el.containerAllProjects.classList.remove('view-list-mode');
+    }
+    try {
+        localStorage.setItem('atlas_view_mode', mode);
+    } catch(e) {}
+}
+
+function renderProjectsList(projects) {
+    if (el.lblAllProjectsCount) {
+        el.lblAllProjectsCount.textContent = `${projects.length} proje`;
+    }
+
+    if (el.containerRecentsProjects) el.containerRecentsProjects.innerHTML = '';
+    if (el.containerAllProjects) el.containerAllProjects.innerHTML = '';
+
+    if (!projects || projects.length === 0) {
+        const emptyHtml = `
+            <div style="grid-column: 1 / -1; padding: 40px; text-align: center; background: #ffffff; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b;">
+                <i class="fa-solid fa-folder-open" style="font-size: 2rem; color: #94a3b8; margin-bottom: 10px;"></i>
+                <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 4px;">Kriterlere Uygun Proje Bulunamadı</h4>
+                <p style="font-size: 0.82rem; margin: 0;">Filtre veya arama kelimesini değiştirin veya yukarıdaki butonla yeni proje oluşturun.</p>
+            </div>
+        `;
+        if (el.containerRecentsProjects) el.containerRecentsProjects.innerHTML = emptyHtml;
+        if (el.containerAllProjects) el.containerAllProjects.innerHTML = emptyHtml;
+        return;
+    }
+
+    // Recents: Top 3
+    const recents = projects.slice(0, 3);
+    recents.forEach(proj => {
+        const card = createProjectCardElement(proj);
+        if (el.containerRecentsProjects) el.containerRecentsProjects.appendChild(card);
+    });
+
+    // All Projects
+    projects.forEach(proj => {
+        const card = createProjectCardElement(proj);
+        if (el.containerAllProjects) el.containerAllProjects.appendChild(card);
+    });
+
+    // Apply view mode styling
+    if (state.viewMode === 'list') {
+        if (el.containerRecentsProjects) el.containerRecentsProjects.classList.add('view-list-mode');
+        if (el.containerAllProjects) el.containerAllProjects.classList.add('view-list-mode');
+    } else {
+        if (el.containerRecentsProjects) el.containerRecentsProjects.classList.remove('view-list-mode');
+        if (el.containerAllProjects) el.containerAllProjects.classList.remove('view-list-mode');
+    }
+}
+
+function createProjectCardElement(proj) {
+    const card = document.createElement('div');
+    card.className = 'project-card';
+    card.setAttribute('data-id', proj.id);
+
+    // Thumbnail: use project thumbnail_url or fallback
+    const thumbSrc = proj.thumbnail_url || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='180'><rect fill='%230f172a' width='320' height='180'/><text fill='%2338bdf8' x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='bold'>Uydu Analizi</text></svg>";
+    
+    const stats = proj.stats || {};
+    const newCount = stats.new_buildings_count ?? 0;
+    const demCount = stats.demolished_count ?? 0;
+    const totalM2 = stats.total_changed_m2 ?? 0;
+    const isShared = proj.is_shared || false;
+    const scopeBadge = isShared 
+        ? `<span class="card-badge-scope"><i class="fa-solid fa-users"></i> Shared</span>` 
+        : `<span class="card-badge-scope"><i class="fa-solid fa-lock"></i> Private</span>`;
+
+    card.innerHTML = `
+        <div class="project-card-thumb">
+            <img src="${thumbSrc}" alt="${proj.name}">
+            ${scopeBadge}
+            <div class="card-dots-btn" title="Projeyi Sil" data-action="delete">
+                <i class="fa-solid fa-trash-can"></i>
+            </div>
+        </div>
+        <div class="project-card-body">
+            <h3 class="project-card-title">${proj.name || 'İsimsiz Proje'}</h3>
+            <div class="project-card-meta">
+                <i class="fa-regular fa-calendar"></i> ${proj.created_at_formatted || 'Yeni'}
+                <span>•</span>
+                <span>${proj.location_name || 'Uydu Bölgesi'}</span>
+            </div>
+            <div class="project-card-stats-row">
+                <span class="stat-tag-mini stat-tag-new">🟢 +${newCount} Yeni</span>
+                <span class="stat-tag-mini stat-tag-dem">🔴 -${demCount} Yıkılan</span>
+                ${totalM2 > 0 ? `<span class="stat-tag-mini stat-tag-exist">📐 ${totalM2} m²</span>` : ''}
+            </div>
+        </div>
+    `;
+
+    // Click on card: open project
+    card.addEventListener('click', (e) => {
+        if (e.target.closest('[data-action="delete"]')) return;
+        openProject(proj.id);
+    });
+
+    // Click on delete
+    const deleteBtn = card.querySelector('[data-action="delete"]');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteProject(proj.id, proj.name);
+        });
+    }
+
+    return card;
+}
+
+// Open existing project from database
+async function openProject(projectId) {
+    try {
+        const res = await fetch(`/api/projects/${projectId}`);
+        const data = await res.json();
+        if (!data.success || !data.project) {
+            showToast('Proje açılamadı: ' + (data.error || ''), 'error');
+            return;
+        }
+
+        const proj = data.project;
+        state.currentProjectId = proj.id;
+        state.currentProjectName = proj.name || 'Proje';
+        state.sourceType = proj.source_type || 'live-hotspot';
+        state.selectedCoords = proj.coords || [41.1070, 28.7900];
+        state.selectedZoom = proj.zoom || 17;
+        
+        el.inputTopbarProjectName.value = state.currentProjectName;
+        if (el.inputStep1ProjectName) el.inputStep1ProjectName.value = state.currentProjectName;
+        setSaveIndicator(true);
+
+        switchScreen('workspace');
+
+        if (proj.results_data && proj.results_data.overlays) {
+            state.resultsData = proj.results_data;
+            const y1 = proj.year_t1 || 'T1';
+            const y2 = proj.year_t2 || 'T2';
+            el.lblPreviewT1.textContent = y1;
+            el.lblPreviewT2.textContent = y2;
+            el.badgeYearT1.innerHTML = `<i class="fa-solid fa-backward"></i> Solda 1. Görüntü: ${y1}`;
+            el.badgeYearT2.innerHTML = `<i class="fa-solid fa-forward"></i> Sağda 2. Görüntü: ${y2}`;
+            el.lblSwipeY1.textContent = y1;
+            el.lblSwipeY2.textContent = y2;
+
+            goToStep(3);
+            setTimeout(() => {
+                renderPureImageResults(state.resultsData);
+            }, 100);
+        } else {
+            goToStep(1);
+        }
+    } catch (err) {
+        console.error('Error opening project:', err);
+        showToast('Proje yüklenirken bir sorun oluştu.', 'error');
+    }
+}
+
+// Delete project
+async function deleteProject(projectId, projectName) {
+    if (!confirm(`"${projectName}" projesini silmek istediğinize emin misiniz?`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            loadProjects();
+        } else {
+            alert('Proje silinemedi: ' + (data.error || ''));
+        }
+    } catch (err) {
+        console.error('Error deleting project:', err);
+    }
+}
+
+// Save project to database
+async function saveProjectToDatabase(showNotice = false) {
+    const projName = el.inputTopbarProjectName.value.trim() || el.inputStep1ProjectName.value.trim() || 'İsimsiz Analiz Projesi';
+    state.currentProjectName = projName;
+
+    const payload = {
+        id: state.currentProjectId || undefined,
+        name: projName,
+        source_type: state.sourceType,
+        location_name: getLocationTitle(),
+        year_t1: (state.sourceType === 'map-click') ? el.mapYearT1?.value : el.yearT1?.value,
+        year_t2: (state.sourceType === 'map-click') ? el.mapYearT2?.value : el.yearT2?.value,
+        coords: state.selectedCoords,
+        zoom: state.selectedZoom,
+        stats: state.resultsData?.stats || {},
+        thumbnail_url: state.resultsData?.overlays?.t2_png_base64 || '',
+        results_data: state.resultsData || null
+    };
+
+    try {
+        const res = await fetch('/api/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success && data.project) {
+            state.currentProjectId = data.project.id;
+            setSaveIndicator(true);
+            if (showNotice) {
+                alert('Proje başarıyla kaydedildi!');
+            }
+        }
+    } catch (err) {
+        console.error('Error saving project:', err);
+    }
+}
+
+function setSaveIndicator(isSaved) {
+    if (!el.lblProjectSaveState) return;
+    if (isSaved) {
+        el.lblProjectSaveState.innerHTML = '<i class="fa-solid fa-circle-check"></i> Kaydedildi';
+        el.lblProjectSaveState.style.color = '#34d399';
+    } else {
+        el.lblProjectSaveState.innerHTML = '<i class="fa-solid fa-circle-dot"></i> Kaydedilmedi';
+        el.lblProjectSaveState.style.color = '#f59e0b';
+    }
+}
+
+function getLocationTitle() {
+    if (state.sourceType === 'live-hotspot') {
+        const h = state.hotspots[state.currentHotspotId];
+        return h ? h.title.split('(')[0].trim() : 'Canlı Uydu Bölgesi';
+    } else if (state.sourceType === 'map-click') {
+        return `Harita [${state.selectedCoords[0].toFixed(2)}, ${state.selectedCoords[1].toFixed(2)}]`;
+    } else if (state.sourceType === 'benchmark-set') {
+        return `LEVIR-CD (${state.currentBenchmarkId})`;
+    }
+    return 'Özel Yükleme';
+}
+
+function createNewProject(prefillSource = null) {
+    state.currentProjectId = null;
+    state.currentProjectName = 'Yeni Bina Değişim Projesi';
+    state.resultsData = null;
+    
+    el.inputTopbarProjectName.value = state.currentProjectName;
+    if (el.inputStep1ProjectName) el.inputStep1ProjectName.value = state.currentProjectName;
+    setSaveIndicator(false);
+
+    if (prefillSource) {
+        const card = document.querySelector(`.source-card[data-source="${prefillSource}"]`);
+        if (card) card.click();
+    }
+
+    switchScreen('workspace');
+    goToStep(1);
+}
+
+// ==========================================
+// HOTSPOTS & STEP 1 INITIALIZATION
+// ==========================================
+async function loadHotspots() {
+    try {
+        const res = await fetch('/api/live/hotspots');
+        const data = await res.json();
+        el.selectHotspot.innerHTML = '';
+        data.forEach(h => {
+            state.hotspots[h.id] = h;
+            const opt = document.createElement('option');
+            opt.value = h.id;
+            opt.textContent = h.title;
+            el.selectHotspot.appendChild(opt);
+        });
+        if (data.length > 0) {
+            updateHotspotCard(data[0].id);
+        }
+    } catch (err) {
+        console.error('Error loading hotspots:', err);
+    }
+}
+
+function updateHotspotCard(hotspotId) {
+    const h = state.hotspots[hotspotId];
+    if (!h) return;
+    state.currentHotspotId = hotspotId;
+    state.selectedCoords = [h.lat, h.lon];
+    state.selectedZoom = h.zoom || 17;
+    el.lblHotspotName.textContent = h.title;
+    el.lblHotspotDesc.textContent = h.desc;
+    if (h.year_t1) el.yearT1.value = h.year_t1;
+    if (h.year_t2) el.yearT2.value = h.year_t2;
+
+    // Suggest project name if new project
+    if (!state.currentProjectId && el.inputStep1ProjectName) {
+        const defaultName = `${h.title.split('(')[0].replace(/[🇹🇷🇺🇸🇦🇪]/g, '').trim()} Kentsel Değişim`;
+        el.inputStep1ProjectName.value = defaultName;
+        el.inputTopbarProjectName.value = defaultName;
+    }
+}
+
+// Interactive Map Picker Initialization (Step 1) with Esri Satellite Basemap
+function initSelectMap() {
+    if (state.selectMap) return;
+    const defaultLat = state.selectedCoords[0] || 41.1070;
+    const defaultLon = state.selectedCoords[1] || 28.7900;
+    
+    state.selectMap = L.map('select-map', {
+        center: [defaultLat, defaultLon],
+        zoom: 14,
+        zoomControl: true
+    });
+
+    // 1. Esri World Imagery (Satellite) Basemap
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: '&copy; Esri, Maxar, Earthstar Geographics'
+    }).addTo(state.selectMap);
+
+    // 2. Esri Boundaries & Places Labels
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        opacity: 0.85
+    }).addTo(state.selectMap);
+
+    // Red draggable marker
+    state.selectMarker = L.marker([defaultLat, defaultLon], {
+        draggable: true
+    }).addTo(state.selectMap);
+
+    const updateCoordDisplay = (lat, lon, zoom) => {
+        state.selectedCoords = [parseFloat(lat.toFixed(5)), parseFloat(lon.toFixed(5))];
+        state.selectedZoom = zoom || state.selectMap.getZoom();
+        if (el.lblSelectedCoords) {
+            el.lblSelectedCoords.textContent = `${state.selectedCoords[0]}, ${state.selectedCoords[1]}`;
+        }
+        if (el.lblSelectedZoom) {
+            el.lblSelectedZoom.textContent = state.selectedZoom;
+        }
+        if (!state.currentProjectId && el.inputStep1ProjectName && state.sourceType === 'map-click') {
+            const coordName = `Uydu Analizi [${state.selectedCoords[0]}, ${state.selectedCoords[1]}]`;
+            el.inputStep1ProjectName.value = coordName;
+            el.inputTopbarProjectName.value = coordName;
+        }
+    };
+
+    state.selectMarker.on('dragend', (e) => {
+        const p = e.target.getLatLng();
+        updateCoordDisplay(p.lat, p.lng);
+    });
+
+    state.selectMap.on('click', (e) => {
+        const lat = e.latlng.lat;
+        const lon = e.latlng.lng;
+        state.selectMarker.setLatLng([lat, lon]);
+        updateCoordDisplay(lat, lon);
+    });
+
+    state.selectMap.on('zoomend', () => {
+        if (el.lblSelectedZoom) {
+            el.lblSelectedZoom.textContent = state.selectMap.getZoom();
+        }
+    });
+
+    // Quick City Buttons
+    document.querySelectorAll('.quick-city-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const lat = parseFloat(btn.getAttribute('data-lat'));
+            const lon = parseFloat(btn.getAttribute('data-lon'));
+            const zoom = parseInt(btn.getAttribute('data-zoom')) || 17;
+            state.selectMap.flyTo([lat, lon], zoom);
+            state.selectMarker.setLatLng([lat, lon]);
+            updateCoordDisplay(lat, lon, zoom);
+        });
+    });
+}
+
+// ==========================================
+// STEP 1 -> STEP 2: Prepare or Fetch Images
+// ==========================================
+async function handleStep1Next() {
+    el.btnGotoStep2.disabled = true;
+    el.btnGotoStep2.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Görüntüler Hazırlanıyor...';
+
+    const isMapClick = (state.sourceType === 'map-click');
+    const y1 = isMapClick ? (el.mapYearT1?.value || '2014') : el.yearT1.value;
+    const y2 = isMapClick ? (el.mapYearT2?.value || '2026') : el.yearT2.value;
+    
+    el.lblPreviewT1.textContent = y1;
+    el.lblPreviewT2.textContent = y2;
+    el.badgeYearT1.innerHTML = `<i class="fa-solid fa-backward"></i> Solda 1. Görüntü: ${y1}`;
+    el.badgeYearT2.innerHTML = `<i class="fa-solid fa-forward"></i> Sağda 2. Görüntü: ${y2}`;
+    el.lblSwipeY1.textContent = y1;
+    el.lblSwipeY2.textContent = y2;
+
+    try {
+        if (state.sourceType === 'live-hotspot' || state.sourceType === 'map-click') {
+            el.step2InfoText.textContent = isMapClick
+                ? `Haritadan seçilen koordinatın (${state.selectedCoords[0]}, ${state.selectedCoords[1]}) ${y1} ve ${y2} canlı uydu fotoğrafları getirildi.`
+                : `Seçilen bölgenin ${y1} ve ${y2} canlı uydu fotoğrafları getirildi.`;
+            
+            el.imgPreviewT1.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'><rect fill='%231e293b' width='256' height='256'/><text fill='%2364748b' x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'>Uydu Çekiliyor...</text></svg>";
+            el.imgPreviewT2.src = el.imgPreviewT1.src;
+            
+            goToStep(2);
+            
+            const aiConf = getAiSettings();
+            const res = await fetch('/api/live/detect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    lat: state.selectedCoords[0],
+                    lon: state.selectedCoords[1],
+                    zoom: state.selectedZoom || 17,
+                    year_t1: y1,
+                    year_t2: y2,
+                    threshold: aiConf.threshold,
+                    min_area_m2: aiConf.minArea
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                state.resultsData = data;
+                el.imgPreviewT1.src = data.overlays.t1_png_base64;
+                el.imgPreviewT2.src = data.overlays.t2_png_base64;
+            } else {
+                alert('Uydu verisi getirilemedi: ' + (data.error || ''));
+            }
+
+        } else if (state.sourceType === 'benchmark-set') {
+            const scId = el.selectBenchmark.value;
+            state.currentBenchmarkId = scId;
+            el.lblPreviewT1.textContent = "T1 (Önce)";
+            el.lblPreviewT2.textContent = "T2 (Sonra)";
+            el.lblSwipeY1.textContent = "T1 (Önce)";
+            el.lblSwipeY2.textContent = "T2 (Sonra)";
+            el.badgeYearT1.innerHTML = `<i class="fa-solid fa-backward"></i> Solda 1. Görüntü: T1`;
+            el.badgeYearT2.innerHTML = `<i class="fa-solid fa-forward"></i> Sağda 2. Görüntü: T2`;
+            el.step2InfoText.textContent = `LEVIR-CD Benchmark seti (${scId}) çifti hazırlandı.`;
+            el.imgPreviewT1.src = `/static/samples/${scId}/A.png`;
+            el.imgPreviewT2.src = `/static/samples/${scId}/B.png`;
+            state.resultsData = null;
+            goToStep(2);
+
+        } else if (state.sourceType === 'custom-upload') {
+            if (!el.inputUploadT1.files[0] || !el.inputUploadT2.files[0]) {
+                alert('Lütfen hem Zaman 1 (T1) hem de Zaman 2 (T2) fotoğraflarını seçin.');
+                el.btnGotoStep2.disabled = false;
+                el.btnGotoStep2.innerHTML = 'Görüntüleri Getir ve 2. Adıma Geç <i class="fa-solid fa-arrow-right"></i>';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('image_t1', el.inputUploadT1.files[0]);
+            formData.append('image_t2', el.inputUploadT2.files[0]);
+            
+            const uploadRes = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const uploadData = await uploadRes.json();
+            if (!uploadData.success) {
+                alert('Yükleme hatası: ' + uploadData.error);
+                return;
+            }
+            state.customFiles = uploadData;
+            el.imgPreviewT1.src = uploadData.url_A;
+            el.imgPreviewT2.src = uploadData.url_B;
+            el.lblPreviewT1.textContent = "Yüklenen T1";
+            el.lblPreviewT2.textContent = "Yüklenen T2";
+            el.lblSwipeY1.textContent = "T1 (Önce)";
+            el.lblSwipeY2.textContent = "T2 (Sonra)";
+            el.badgeYearT1.innerHTML = `<i class="fa-solid fa-backward"></i> Solda 1. Görüntü: T1`;
+            el.badgeYearT2.innerHTML = `<i class="fa-solid fa-forward"></i> Sağda 2. Görüntü: T2`;
+            el.step2InfoText.textContent = `Yüklenen özel fotoğraflarınız hazırlandı.`;
+            state.resultsData = null;
+            goToStep(2);
+        }
+
+    } catch (err) {
+        console.error('Error in step 1 next:', err);
+        alert('Görüntüler hazırlanırken bir hata oluştu.');
+    } finally {
+        el.btnGotoStep2.disabled = false;
+        el.btnGotoStep2.innerHTML = 'Görüntüleri Getir ve 2. Adıma Geç <i class="fa-solid fa-arrow-right"></i>';
+    }
+}
+
+// ==========================================
+// STEP 2 -> STEP 3: Run Building Detection
+// ==========================================
+async function handleRunDetection() {
+    el.btnRunBuildingDetection.disabled = true;
+    el.btnRunBuildingDetection.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Binalar Tespit Ediliyor...';
+
+    try {
+        let data = state.resultsData;
+        const aiConf = getAiSettings();
+        
+        if (!data || (state.sourceType !== 'live-hotspot' && state.sourceType !== 'map-click')) {
+            if (state.sourceType === 'benchmark-set') {
+                const res = await fetch('/api/detect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        scenario_id: state.currentBenchmarkId,
+                        threshold: aiConf.threshold,
+                        min_area_m2: aiConf.minArea,
+                        use_gt: true
+                    })
+                });
+                data = await res.json();
+            } else if (state.sourceType === 'custom-upload') {
+                const res = await fetch('/api/detect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        scenario_id: 'custom',
+                        path_A: state.customFiles.path_A,
+                        path_B: state.customFiles.path_B,
+                        threshold: aiConf.threshold,
+                        min_area_m2: aiConf.minArea,
+                        use_gt: false
+                    })
+                });
+                data = await res.json();
+            }
+            state.resultsData = data;
+        }
+
+        if (!data || !data.success) {
+            alert('Bina tespiti yapılamadı: ' + (data ? data.error : ''));
+            return;
+        }
+
+        // 1. Switch to Step 3
+        goToStep(3);
+
+        // 2. Render purely on downloaded/uploaded images in L.CRS.Simple
+        setTimeout(() => {
+            renderPureImageResults(data);
+            // Automatically persist this analysis to projects database!
+            saveProjectToDatabase(false);
+        }, 150);
+
+    } catch (err) {
+        console.error('Detection error:', err);
+        alert('Bina değişim analizi sırasında hata oluştu.');
+    } finally {
+        el.btnRunBuildingDetection.disabled = false;
+        el.btnRunBuildingDetection.innerHTML = '<i class="fa-solid fa-bolt"></i> Binaları Bul ve Değişimi Tespit Et <i class="fa-solid fa-arrow-right"></i>';
+    }
+}
+
+// ==========================================
+// STEP 3: RENDER PURE IMAGE RESULTS (SWIPE)
+// ==========================================
+function renderPureImageResults(data) {
+    state.resultsData = data;
+    const stats = data.stats || {};
+    if (el.resCountNew) el.resCountNew.textContent = stats.new_buildings_count || 0;
+    if (el.resCountDem) el.resCountDem.textContent = stats.demolished_count || 0;
+    if (el.resCountExist) el.resCountExist.textContent = stats.existing_count || 0;
+    if (el.resTotalArea) el.resTotalArea.textContent = `${stats.total_changed_m2 || 0} m²`;
+    
+    // Layer badges
+    if (el.layerBadgeNew) el.layerBadgeNew.textContent = stats.new_buildings_count || 0;
+    if (el.layerBadgeDem) el.layerBadgeDem.textContent = stats.demolished_count || 0;
+    if (el.layerBadgeExist) el.layerBadgeExist.textContent = stats.existing_count || 0;
+    
+    // Set years
+    const y1 = data.years ? data.years.t1 : 'Önceki';
+    const y2 = data.years ? data.years.t2 : 'Sonraki';
+    if (el.lblSwipeY1) el.lblSwipeY1.textContent = y1;
+    if (el.lblSwipeY2) el.lblSwipeY2.textContent = y2;
+    if (el.lblSwipeY1Tag) el.lblSwipeY1Tag.textContent = y1;
+    if (el.lblSwipeY2Tag) el.lblSwipeY2Tag.textContent = y2;
+    
+    // 1. Set Image Sources (T2 Base underneath, T1 Clipped Overlay on top)
+    const overlays = data.overlays || {};
+    if (overlays.t2_png_base64 && el.stageImgT2) {
+        el.stageImgT2.src = overlays.t2_png_base64;
+    }
+    if (overlays.t1_png_base64 && el.stageImgT1) {
+        el.stageImgT1.src = overlays.t1_png_base64;
+    }
+
+    // 2. Set SVG Canvas ViewBox
+    const imgSize = data.image_size || [512, 512];
+    const w = imgSize[0];
+    const h = imgSize[1];
+    if (el.stageVectorSvg) {
+        el.stageVectorSvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    }
+
+    // 3. Populate SVG Polygons and Labels
+    if (el.svgGroupExist) el.svgGroupExist.innerHTML = '';
+    if (el.svgGroupNew) el.svgGroupNew.innerHTML = '';
+    if (el.svgGroupDem) el.svgGroupDem.innerHTML = '';
+    if (el.svgGroupLabels) el.svgGroupLabels.innerHTML = '';
+
+    const buildings = data.buildings || [];
+    if (el.lblBuildingCount) el.lblBuildingCount.textContent = buildings.length;
+
+    buildings.forEach(b => {
+        if (!b.px_coords || b.px_coords.length < 3) return;
+
+        const ptsStr = b.px_coords.map(pt => `${pt[0]},${pt[1]}`).join(' ');
+        const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        polygon.setAttribute('points', ptsStr);
+        polygon.setAttribute('data-id', b.id);
+        polygon.id = `svg-poly-${b.id}`;
+
+        const isNew = b.type === 'new';
+        const isDem = b.type === 'demolished';
+        const color = isNew ? '#10b981' : (isDem ? '#ef4444' : '#64748b');
+        const strokeColor = isNew ? '#059669' : (isDem ? '#dc2626' : '#475569');
+
+        polygon.setAttribute('fill', color);
+        polygon.setAttribute('fill-opacity', '0.45');
+        polygon.setAttribute('stroke', strokeColor);
+        polygon.setAttribute('stroke-width', '2');
+
+        // Polygon hover & click events
+        polygon.addEventListener('mouseenter', (e) => {
+            showBuildingTooltip(b, e);
+            polygon.setAttribute('fill-opacity', '0.8');
+            polygon.setAttribute('stroke-width', '3.5');
+        });
+
+        polygon.addEventListener('mouseleave', () => {
+            hideBuildingTooltip();
+            if (state.selectedBuildingId !== b.id) {
+                polygon.setAttribute('fill-opacity', '0.45');
+                polygon.setAttribute('stroke-width', '2');
+            }
+        });
+
+        polygon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            focusOnBuilding(b);
+        });
+
+        if (isNew && el.svgGroupNew) {
+            el.svgGroupNew.appendChild(polygon);
+        } else if (isDem && el.svgGroupDem) {
+            el.svgGroupDem.appendChild(polygon);
+        } else if (el.svgGroupExist) {
+            el.svgGroupExist.appendChild(polygon);
+        }
+
+        // Add Number Badge in SVG
+        if (b.centroid_px && el.svgGroupLabels) {
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', b.centroid_px[0]);
+            text.setAttribute('y', b.centroid_px[1]);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('dominant-baseline', 'central');
+            text.id = `svg-label-${b.id}`;
+            text.textContent = `#${b.id}`;
+            el.svgGroupLabels.appendChild(text);
+        }
+    });
+
+    // 4. Populate Left Sidebar Building Cards
+    if (el.buildingItemsList) {
+        el.buildingItemsList.innerHTML = '';
+        buildings.forEach(b => {
+            const item = document.createElement('div');
+            item.className = 'building-card-item';
+            item.id = `card-building-${b.id}`;
+
+            let badgeClass = 'badge-b-exist';
+            if (b.type === 'new') badgeClass = 'badge-b-new';
+            else if (b.type === 'demolished') badgeClass = 'badge-b-dem';
+
+            item.innerHTML = `
+                <div class="building-card-header">
+                    <span class="building-title">${b.icon} Bina #${b.id}</span>
+                    <span class="badge-b-type ${badgeClass}">${b.type_tr}</span>
+                </div>
+                <div class="building-meta-row">
+                    <span>Taban: <strong>${b.area_m2} m²</strong></span>
+                    <span>Çevre: ${b.perimeter_m} m</span>
+                    <span>Güven: %${b.confidence_pct}</span>
+                </div>
+            `;
+
+            item.addEventListener('click', () => {
+                focusOnBuilding(b);
+            });
+
+            el.buildingItemsList.appendChild(item);
+        });
+    }
+
+    // 5. Reset Stage View & apply 50% Swipe Split
+    resetStageView();
+    updateSwipeDivider(50);
+}
+
+// Focus & Zoom to a specific building
+function focusOnBuilding(b) {
+    state.selectedBuildingId = b.id;
+
+    // Highlight card in sidebar list
+    document.querySelectorAll('.building-card-item').forEach(c => c.classList.remove('selected'));
+    const card = document.getElementById(`card-building-${b.id}`);
+    if (card) {
+        card.classList.add('selected');
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Highlight polygon in SVG
+    document.querySelectorAll('.stage-vector-svg polygon').forEach(p => p.classList.remove('highlighted'));
+    const poly = document.getElementById(`svg-poly-${b.id}`);
+    if (poly) {
+        poly.classList.add('highlighted');
+        setTimeout(() => poly.classList.remove('highlighted'), 3000);
+    }
+
+    // Center Stage View on Building Centroid with Zoom
+    if (b.centroid_px) {
+        const imgSize = state.resultsData?.image_size || [512, 512];
+        const cx = b.centroid_px[0];
+        const cy = b.centroid_px[1];
+        
+        state.zoomScale = 2.0;
+        // Calculate offset to bring (cx, cy) to center
+        state.panX = (imgSize[0] / 2 - cx) * 0.9;
+        state.panY = (imgSize[1] / 2 - cy) * 0.9;
+        applyStageTransform();
+    }
+
+    // Display tooltip
+    showBuildingTooltip(b);
+    setTimeout(hideBuildingTooltip, 3000);
+}
+
+// Tooltip helpers
+function showBuildingTooltip(b, event) {
+    if (!el.buildingHoverTooltip) return;
+    el.buildingHoverTooltip.innerHTML = `
+        <div style="font-weight:700; margin-bottom:2px;">${b.icon} Bina #${b.id} - ${b.type_tr}</div>
+        <div style="font-size:0.7rem; color:#cbd5e1; display:flex; gap:8px;">
+            <span>Taban: <strong>${b.area_m2} m²</strong></span>
+            <span>Çevre: ${b.perimeter_m} m</span>
+            <span>Güven: %${b.confidence_pct}</span>
+        </div>
+    `;
+    
+    if (event && el.swipeStageContent) {
+        const rect = el.swipeStageContent.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        el.buildingHoverTooltip.style.left = `${x}px`;
+        el.buildingHoverTooltip.style.top = `${y}px`;
+    } else if (b.centroid_px && el.swipeStageContent) {
+        const imgSize = state.resultsData?.image_size || [512, 512];
+        const pctX = (b.centroid_px[0] / imgSize[0]) * 100;
+        const pctY = (b.centroid_px[1] / imgSize[1]) * 100;
+        el.buildingHoverTooltip.style.left = `${pctX}%`;
+        el.buildingHoverTooltip.style.top = `${pctY}%`;
+    }
+    
+    el.buildingHoverTooltip.style.display = 'block';
+}
+
+function hideBuildingTooltip() {
+    if (el.buildingHoverTooltip) {
+        el.buildingHoverTooltip.style.display = 'none';
+    }
+}
+
+// Swipe Clip-Path Handler: Left shows T1 (1. İlk), Right shows T2 (2. Sonraki)
+function updateSwipeDivider(pct) {
+    pct = Math.max(0, Math.min(100, pct));
+    state.swipePosPct = pct;
+
+    if (el.stageT1Clipper) {
+        el.stageT1Clipper.style.clipPath = `polygon(0 0, ${pct}% 0, ${pct}% 100%, 0 100%)`;
+    }
+    if (el.swipeDividerLine) {
+        el.swipeDividerLine.style.left = `${pct}%`;
+    }
+}
+
+// Stage Zoom & Pan Transforms
+function applyStageTransform() {
+    if (!el.swipeStageContent) return;
+    el.swipeStageContent.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoomScale})`;
+    if (el.lblZoomLevel) {
+        el.lblZoomLevel.textContent = `${Math.round(state.zoomScale * 100)}%`;
+    }
+}
+
+function setZoom(scale) {
+    state.zoomScale = Math.max(0.8, Math.min(5.0, scale));
+    applyStageTransform();
+}
+
+function resetStageView() {
+    state.zoomScale = 1.0;
+    state.panX = 0;
+    state.panY = 0;
+    applyStageTransform();
+}
+
+// Swipe Dragging & Stage Pan/Zoom Interactions
+function setupSwipeInteractions() {
+    // 1. Swipe Divider Dragging
+    const handle = el.swipeDividerHandle;
+    const divider = el.swipeDividerLine;
+    const stage = el.swipeStageContent;
+
+    const onSwipeMove = (clientX) => {
+        if (!stage) return;
+        const rect = stage.getBoundingClientRect();
+        const offsetX = clientX - rect.left;
+        let pct = (offsetX / rect.width) * 100;
+        updateSwipeDivider(pct);
+    };
+
+    if (handle) {
+        handle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            state.isDraggingSwipe = true;
+            document.body.style.cursor = 'ew-resize';
+        });
+    }
+
+    if (divider) {
+        divider.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            state.isDraggingSwipe = true;
+            document.body.style.cursor = 'ew-resize';
+        });
+    }
+
+    // Touch support for swipe divider
+    if (handle) {
+        handle.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            state.isDraggingSwipe = true;
+        }, { passive: true });
+    }
+
+    // 2. Stage Pan Interactions (Drag to Pan when zoomed or inspecting)
+    if (el.swipeStageViewport) {
+        el.swipeStageViewport.addEventListener('mousedown', (e) => {
+            if (state.isDraggingSwipe) return;
+            // Left mouse button pan
+            if (e.button === 0) {
+                state.isPanning = true;
+                state.panStartX = e.clientX - state.panX;
+                state.panStartY = e.clientY - state.panY;
+                if (el.swipeStageViewport) el.swipeStageViewport.classList.add('grabbing');
+            }
+        });
+
+        // Wheel Zoom
+        el.swipeStageViewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 0.15 : -0.15;
+            setZoom(state.zoomScale + delta);
+        }, { passive: false });
+    }
+
+    // Window Mouse Move & Up for Smooth Dragging
+    window.addEventListener('mousemove', (e) => {
+        if (state.isDraggingSwipe) {
+            onSwipeMove(e.clientX);
+        } else if (state.isPanning) {
+            state.panX = e.clientX - state.panStartX;
+            state.panY = e.clientY - state.panStartY;
+            applyStageTransform();
+        }
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (state.isDraggingSwipe) {
+            state.isDraggingSwipe = false;
+            document.body.style.cursor = 'default';
+        }
+        if (state.isPanning) {
+            state.isPanning = false;
+            if (el.swipeStageViewport) el.swipeStageViewport.classList.remove('grabbing');
+        }
+    });
+
+    window.addEventListener('touchmove', (e) => {
+        if (state.isDraggingSwipe && e.touches[0]) {
+            onSwipeMove(e.touches[0].clientX);
+        }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+        state.isDraggingSwipe = false;
+    });
+
+    // 3. Zoom Toolbar Buttons
+    if (el.btnZoomIn) {
+        el.btnZoomIn.addEventListener('click', () => setZoom(state.zoomScale + 0.25));
+    }
+    if (el.btnZoomOut) {
+        el.btnZoomOut.addEventListener('click', () => setZoom(state.zoomScale - 0.25));
+    }
+    if (el.btnZoomReset) {
+        el.btnZoomReset.addEventListener('click', () => resetStageView());
+    }
+
+    // 4. Vector Detection Layer Toggles (User Request: "vector detection katmanları açılı kapanır olsun")
+    if (el.chkLayerNew) {
+        el.chkLayerNew.addEventListener('change', (e) => {
+            if (el.svgGroupNew) el.svgGroupNew.style.display = e.target.checked ? '' : 'none';
+        });
+    }
+    if (el.chkLayerDem) {
+        el.chkLayerDem.addEventListener('change', (e) => {
+            if (el.svgGroupDem) el.svgGroupDem.style.display = e.target.checked ? '' : 'none';
+        });
+    }
+    if (el.chkLayerExist) {
+        el.chkLayerExist.addEventListener('change', (e) => {
+            if (el.svgGroupExist) el.svgGroupExist.style.display = e.target.checked ? '' : 'none';
+        });
+    }
+    if (el.chkLayerLabels) {
+        el.chkLayerLabels.addEventListener('change', (e) => {
+            if (el.svgGroupLabels) el.svgGroupLabels.style.display = e.target.checked ? '' : 'none';
+        });
+    }
+}
+
+// ==========================================
+// MODALS, SETTINGS & COLLECTIONS HELPERS
+// ==========================================
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('show');
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove('show');
+}
+
+function escapeHtml(str) {
+    return (str || '').replace(/[&<>"']/g, function(m) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m];
+    });
+}
+
+function getAiSettings() {
+    try {
+        const saved = localStorage.getItem('atlas_ai_settings');
+        if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return { threshold: 0.45, minArea: 30.0 };
+}
+
+function initCollections() {
+    let customCols = [];
+    try {
+        customCols = JSON.parse(localStorage.getItem('atlas_custom_collections') || '[]');
+    } catch(e) {}
+
+    customCols.forEach(col => {
+        addCollectionToSidebar(col.id, col.name, col.color, false);
+    });
+
+    document.querySelectorAll('#collections-list .col-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const col = item.getAttribute('data-col');
+            handleCollectionSelect(col, item);
+        });
+    });
+}
+
+function addCollectionToSidebar(id, name, color, save = true) {
+    if (!el.collectionsList) return;
+    const item = document.createElement('div');
+    item.className = 'col-item';
+    item.setAttribute('data-col', id);
+    item.innerHTML = `<i class="fa-solid fa-circle text-${color}"></i> ${escapeHtml(name)}`;
+    
+    item.addEventListener('click', () => {
+        handleCollectionSelect(id, item);
+    });
+
+    el.collectionsList.appendChild(item);
+
+    if (save) {
+        let customCols = [];
+        try {
+            customCols = JSON.parse(localStorage.getItem('atlas_custom_collections') || '[]');
+        } catch(e) {}
+        customCols.push({ id, name, color });
+        localStorage.setItem('atlas_custom_collections', JSON.stringify(customCols));
+    }
+}
+
+function handleCollectionSelect(colId, itemEl) {
+    document.querySelectorAll('#collections-list .col-item').forEach(c => c.classList.remove('active'));
+    if (itemEl) itemEl.classList.add('active');
+    state.activeCollection = colId;
+    state.activeFilterScope = colId;
+    
+    if (el.dashFilterScope) {
+        const exists = Array.from(el.dashFilterScope.options).some(o => o.value === colId);
+        if (exists) {
+            el.dashFilterScope.value = colId;
+        } else {
+            el.dashFilterScope.value = 'all';
+        }
+    }
+    applyFilterAndSort();
+}
+
+function initSettings() {
+    const s = getAiSettings();
+    if (el.rangeSettingThreshold) {
+        el.rangeSettingThreshold.value = s.threshold;
+        if (el.lblSettingThreshold) el.lblSettingThreshold.textContent = parseFloat(s.threshold).toFixed(2);
+        el.rangeSettingThreshold.addEventListener('input', (e) => {
+            if (el.lblSettingThreshold) el.lblSettingThreshold.textContent = parseFloat(e.target.value).toFixed(2);
+        });
+    }
+    if (el.rangeSettingMinarea) {
+        el.rangeSettingMinarea.value = s.minArea;
+        if (el.lblSettingMinarea) el.lblSettingMinarea.textContent = `${s.minArea} m²`;
+        el.rangeSettingMinarea.addEventListener('input', (e) => {
+            if (el.lblSettingMinarea) el.lblSettingMinarea.textContent = `${e.target.value} m²`;
+        });
+    }
+    if (el.btnSaveSettings) {
+        el.btnSaveSettings.addEventListener('click', () => {
+            const threshold = parseFloat(el.rangeSettingThreshold.value);
+            const minArea = parseFloat(el.rangeSettingMinarea.value);
+            localStorage.setItem('atlas_ai_settings', JSON.stringify({ threshold, minArea }));
+            closeModal('modal-settings');
+            alert('Model ve tespit ayarları kaydedildi!');
+        });
+    }
+    if (el.btnClearAllProjects) {
+        el.btnClearAllProjects.addEventListener('click', async () => {
+            if (!confirm('Tüm kayıtlı projeleri silmek ve veritabanını sıfırlamak istediğinize emin misiniz? Bu işlem geri alınamaz.')) {
+                return;
+            }
+            try {
+                const res = await fetch('/api/projects/clear', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    closeModal('modal-settings');
+                    loadProjects();
+                    alert('Tüm projeler başarıyla sıfırlandı.');
+                }
+            } catch(e) {
+                alert('Projeler sıfırlanırken hata oluştu.');
+            }
+        });
+    }
+}
+
+function initModals() {
+    if (el.menuBtnDiscover) {
+        el.menuBtnDiscover.addEventListener('click', (e) => {
+            e.preventDefault();
+            openModal('modal-discover');
+        });
+    }
+    if (el.menuBtnDatasets) {
+        el.menuBtnDatasets.addEventListener('click', (e) => {
+            e.preventDefault();
+            openModal('modal-datasets');
+        });
+    }
+    if (el.menuBtnSettings) {
+        el.menuBtnSettings.addEventListener('click', (e) => {
+            e.preventDefault();
+            openModal('modal-settings');
+        });
+    }
+    if (el.btnAddCollection) {
+        el.btnAddCollection.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (el.inputNewCollectionName) el.inputNewCollectionName.value = '';
+            openModal('modal-collection');
+        });
+    }
+    if (el.btnConfirmAddCollection) {
+        el.btnConfirmAddCollection.addEventListener('click', () => {
+            const name = el.inputNewCollectionName ? el.inputNewCollectionName.value.trim() : '';
+            if (!name) {
+                alert('Lütfen bir koleksiyon adı girin.');
+                return;
+            }
+            const colorRadio = document.querySelector('input[name="col-color"]:checked');
+            const color = colorRadio ? colorRadio.value : 'blue';
+            const colId = 'custom_' + Date.now();
+            addCollectionToSidebar(colId, name, color, true);
+            closeModal('modal-collection');
+        });
+    }
+
+    // Discover quick analyze buttons
+    document.querySelectorAll('.btn-quick-analyze').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const card = btn.closest('.discover-card');
+            const hotspotId = card.getAttribute('data-hotspot');
+            closeModal('modal-discover');
+            
+            createNewProject('live-hotspot');
+            if (el.selectHotspot) {
+                el.selectHotspot.value = hotspotId;
+                updateHotspotCard(hotspotId);
+            }
+            handleStep1Next();
+        });
+    });
+
+    // Datasets quick test buttons
+    document.querySelectorAll('.btn-run-benchmark').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const row = btn.closest('.benchmark-modal-row');
+            const benchmarkId = row.getAttribute('data-benchmark');
+            closeModal('modal-datasets');
+            
+            createNewProject('benchmark-set');
+            state.currentBenchmarkId = benchmarkId;
+            if (el.selectBenchmark) {
+                el.selectBenchmark.value = benchmarkId;
+            }
+            handleStep1Next();
+        });
+    });
+
+    // Global modal close handlers
+    document.addEventListener('click', (e) => {
+        const closeBtn = e.target.closest('[data-close]');
+        if (closeBtn) {
+            const modalId = closeBtn.getAttribute('data-close');
+            closeModal(modalId);
+            return;
+        }
+        if (e.target.classList.contains('atlas-modal-backdrop')) {
+            e.target.classList.remove('show');
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.atlas-modal-backdrop.show').forEach(m => m.classList.remove('show'));
+        }
+    });
+}
+
+// ==========================================
+// SETUP EVENT LISTENERS
+// ==========================================
+function setupEvents() {
+    // 1. Dashboard Buttons
+    if (el.btnSidebarCreateProject) {
+        el.btnSidebarCreateProject.addEventListener('click', () => createNewProject());
+    }
+    if (el.btnBannerNewProject) {
+        el.btnBannerNewProject.addEventListener('click', () => createNewProject());
+    }
+    if (el.btnShortcutCreate) {
+        el.btnShortcutCreate.addEventListener('click', () => createNewProject());
+    }
+    if (el.btnShortcutImport) {
+        el.btnShortcutImport.addEventListener('click', () => createNewProject('custom-upload'));
+    }
+    if (el.btnShortcutTemplates) {
+        el.btnShortcutTemplates.addEventListener('click', () => createNewProject('live-hotspot'));
+    }
+
+    // Projects menu item
+    if (el.menuBtnProjects) {
+        el.menuBtnProjects.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchScreen('dashboard');
+        });
+    }
+
+    // Search Projects in Dashboard
+    if (el.inputDashSearch) {
+        let debounceTimer;
+        el.inputDashSearch.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                loadProjects(e.target.value);
+            }, 250);
+        });
+    }
+
+    // Filter Scope in Dashboard
+    if (el.dashFilterScope) {
+        el.dashFilterScope.addEventListener('change', (e) => {
+            state.activeFilterScope = e.target.value;
+            document.querySelectorAll('#collections-list .col-item').forEach(c => {
+                c.classList.toggle('active', c.getAttribute('data-col') === state.activeFilterScope);
+            });
+            applyFilterAndSort();
+        });
+    }
+
+    // Sort By in Dashboard
+    if (el.dashSortBy) {
+        el.dashSortBy.addEventListener('change', (e) => {
+            state.activeSortBy = e.target.value;
+            applyFilterAndSort();
+        });
+    }
+
+    // View Mode Toggle (Grid vs List)
+    if (el.btnViewGrid) {
+        el.btnViewGrid.addEventListener('click', () => setViewMode('grid'));
+    }
+    if (el.btnViewList) {
+        el.btnViewList.addEventListener('click', () => setViewMode('list'));
+    }
+
+    // Back to Dashboard Button
+    if (el.btnBackToDashboard) {
+        el.btnBackToDashboard.addEventListener('click', () => {
+            switchScreen('dashboard');
+        });
+    }
+
+    // Project Name Sync
+    if (el.inputTopbarProjectName && el.inputStep1ProjectName) {
+        el.inputTopbarProjectName.addEventListener('input', (e) => {
+            el.inputStep1ProjectName.value = e.target.value;
+            setSaveIndicator(false);
+        });
+        el.inputStep1ProjectName.addEventListener('input', (e) => {
+            el.inputTopbarProjectName.value = e.target.value;
+            setSaveIndicator(false);
+        });
+    }
+
+    // Manual Save Button
+    if (el.btnManualSaveProject) {
+        el.btnManualSaveProject.addEventListener('click', () => {
+            saveProjectToDatabase(true);
+        });
+    }
+
+    // Toggle Building Polygons Visibility
+    if (el.btnTogglePolygons) {
+        el.btnTogglePolygons.addEventListener('click', () => {
+            state.allVectorsVisible = !state.allVectorsVisible;
+            if (el.stageVectorSvg) {
+                el.stageVectorSvg.style.display = state.allVectorsVisible ? 'block' : 'none';
+            }
+            if (el.lblTogglePoly) {
+                el.lblTogglePoly.textContent = state.allVectorsVisible ? 'Tüm Vektörleri Gizle' : 'Tüm Vektörleri Göster';
+            }
+            if (el.btnTogglePolygons) {
+                el.btnTogglePolygons.classList.toggle('active', !state.allVectorsVisible);
+            }
+        });
+    }
+
+    // Source Card Selection
+    el.sourceCards.forEach(card => {
+        card.addEventListener('click', () => {
+            el.sourceCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            
+            const src = card.getAttribute('data-source');
+            state.sourceType = src;
+            
+            Object.keys(el.panels).forEach(k => {
+                if (el.panels[k]) {
+                    el.panels[k].style.display = (k === src) ? 'block' : 'none';
+                }
+            });
+
+            if (src === 'map-click') {
+                initSelectMap();
+                setTimeout(() => {
+                    if (state.selectMap) {
+                        state.selectMap.invalidateSize();
+                    }
+                }, 100);
+            }
+        });
+    });
+
+    // Hotspot Selection
+    if (el.selectHotspot) {
+        el.selectHotspot.addEventListener('change', (e) => {
+            updateHotspotCard(e.target.value);
+        });
+    }
+
+    // Step 1 -> Step 2
+    if (el.btnGotoStep2) {
+        el.btnGotoStep2.addEventListener('click', handleStep1Next);
+    }
+
+    // Step 2 -> Step 1
+    if (el.btnBackToStep1) {
+        el.btnBackToStep1.addEventListener('click', () => goToStep(1));
+    }
+
+    // Step 2 -> Step 3
+    if (el.btnRunBuildingDetection) {
+        el.btnRunBuildingDetection.addEventListener('click', handleRunDetection);
+    }
+
+    // Restart Wizard
+    if (el.btnRestartWizard) {
+        el.btnRestartWizard.addEventListener('click', () => {
+            state.resultsData = null;
+            goToStep(1);
+        });
+    }
+
+    // Export Downloads
+    if (el.btnExportGeoJson) {
+        el.btnExportGeoJson.addEventListener('click', () => {
+            window.location.href = '/api/export/geojson';
+        });
+    }
+    if (el.btnExportCsv) {
+        el.btnExportCsv.addEventListener('click', () => {
+            window.location.href = '/api/export/csv';
+        });
+    }
+
+    // Swipe Interactions
+    setupSwipeInteractions();
+}
+
+// Bootstrap
+document.addEventListener('DOMContentLoaded', () => {
+    setupEvents();
+    initModals();
+    initSettings();
+    initCollections();
+    setViewMode(state.viewMode);
+    loadHotspots();
+    loadProjects();
+});

@@ -1,0 +1,982 @@
+[
+  {
+    "ident": "WB_2026_R07",
+    "title": "World Imagery (Wayback 2026-08-05)",
+    "release_id": "26334"
+  },
+  {
+    "ident": "WB_2026_R06",
+    "title": "World Imagery (Wayback 2026-06-30)",
+    "release_id": "32246"
+  },
+  {
+    "ident": "WB_2026_R05",
+    "title": "World Imagery (Wayback 2026-05-28)",
+    "release_id": "10842"
+  },
+  {
+    "ident": "WB_2026_R04",
+    "title": "World Imagery (Wayback 2026-04-30)",
+    "release_id": "49059"
+  },
+  {
+    "ident": "WB_2026_R03",
+    "title": "World Imagery (Wayback 2026-03-25)",
+    "release_id": "22869"
+  },
+  {
+    "ident": "WB_2026_R02",
+    "title": "World Imagery (Wayback 2026-02-26)",
+    "release_id": "64001"
+  },
+  {
+    "ident": "WB_2026_R01",
+    "title": "World Imagery (Wayback 2026-01-29)",
+    "release_id": "22252"
+  },
+  {
+    "ident": "WB_2025_R12",
+    "title": "World Imagery (Wayback 2025-12-18)",
+    "release_id": "13192"
+  },
+  {
+    "ident": "WB_2025_R11",
+    "title": "World Imagery (Wayback 2025-11-20)",
+    "release_id": "51127"
+  },
+  {
+    "ident": "WB_2025_R10",
+    "title": "World Imagery (Wayback 2025-10-23)",
+    "release_id": "20512"
+  },
+  {
+    "ident": "WB_2025_R09",
+    "title": "World Imagery (Wayback 2025-09-25)",
+    "release_id": "58924"
+  },
+  {
+    "ident": "WB_2025_R08",
+    "title": "World Imagery (Wayback 2025-09-04)",
+    "release_id": "52304"
+  },
+  {
+    "ident": "WB_2025_R07",
+    "title": "World Imagery (Wayback 2025-07-31)",
+    "release_id": "49999"
+  },
+  {
+    "ident": "WB_2025_R06",
+    "title": "World Imagery (Wayback 2025-06-26)",
+    "release_id": "48925"
+  },
+  {
+    "ident": "WB_2025_R05",
+    "title": "World Imagery (Wayback 2025-05-29)",
+    "release_id": "25285"
+  },
+  {
+    "ident": "WB_2025_R04",
+    "title": "World Imagery (Wayback 2025-04-24)",
+    "release_id": "27982"
+  },
+  {
+    "ident": "WB_2025_R03",
+    "title": "World Imagery (Wayback 2025-03-27)",
+    "release_id": "6543"
+  },
+  {
+    "ident": "WB_2025_R02",
+    "title": "World Imagery (Wayback 2025-02-27)",
+    "release_id": "34007"
+  },
+  {
+    "ident": "WB_2025_R01",
+    "title": "World Imagery (Wayback 2025-01-30)",
+    "release_id": "36557"
+  },
+  {
+    "ident": "WB_2024_R13",
+    "title": "World Imagery (Wayback 2024-12-12)",
+    "release_id": "16453"
+  },
+  {
+    "ident": "WB_2024_R12",
+    "title": "World Imagery (Wayback 2024-11-18)",
+    "release_id": "49849"
+  },
+  {
+    "ident": "WB_2024_R11",
+    "title": "World Imagery (Wayback 2024-10-10)",
+    "release_id": "56450"
+  },
+  {
+    "ident": "WB_2024_R10",
+    "title": "World Imagery (Wayback 2024-09-19)",
+    "release_id": "20337"
+  },
+  {
+    "ident": "WB_2024_R08",
+    "title": "World Imagery (Wayback 2024-08-15)",
+    "release_id": "32553"
+  },
+  {
+    "ident": "WB_2024_R07",
+    "title": "World Imagery (Wayback 2024-06-27)",
+    "release_id": "39767"
+  },
+  {
+    "ident": "WB_2024_R06",
+    "title": "World Imagery (Wayback 2024-06-06)",
+    "release_id": "12428"
+  },
+  {
+    "ident": "WB_2024_R05",
+    "title": "World Imagery (Wayback 2024-05-09)",
+    "release_id": "52930"
+  },
+  {
+    "ident": "WB_2024_R03",
+    "title": "World Imagery (Wayback 2024-03-28)",
+    "release_id": "13968"
+  },
+  {
+    "ident": "WB_2024_R02",
+    "title": "World Imagery (Wayback 2024-03-07)",
+    "release_id": "60013"
+  },
+  {
+    "ident": "WB_2024_R01",
+    "title": "World Imagery (Wayback 2024-02-08)",
+    "release_id": "37965"
+  },
+  {
+    "ident": "WB_2024_R00",
+    "title": "World Imagery (Wayback 2024-01-18)",
+    "release_id": "41468"
+  },
+  {
+    "ident": "WB_2023_R11",
+    "title": "World Imagery (Wayback 2023-12-07)",
+    "release_id": "56102"
+  },
+  {
+    "ident": "WB_2023_R10",
+    "title": "World Imagery (Wayback 2023-11-01)",
+    "release_id": "12457"
+  },
+  {
+    "ident": "WB_2023_R09",
+    "title": "World Imagery (Wayback 2023-10-11)",
+    "release_id": "1034"
+  },
+  {
+    "ident": "WB_2023_R08",
+    "title": "World Imagery (Wayback 2023-08-31)",
+    "release_id": "64776"
+  },
+  {
+    "ident": "WB_2023_R07",
+    "title": "World Imagery (Wayback 2023-08-10)",
+    "release_id": "17632"
+  },
+  {
+    "ident": "WB_2023_R06",
+    "title": "World Imagery (Wayback 2023-06-29)",
+    "release_id": "47963"
+  },
+  {
+    "ident": "WB_2023_R05",
+    "title": "World Imagery (Wayback 2023-06-13)",
+    "release_id": "25982"
+  },
+  {
+    "ident": "WB_2023_R04",
+    "title": "World Imagery (Wayback 2023-05-03)",
+    "release_id": "46399"
+  },
+  {
+    "ident": "WB_2023_R03",
+    "title": "World Imagery (Wayback 2023-04-05)",
+    "release_id": "37890"
+  },
+  {
+    "ident": "WB_2023_R02",
+    "title": "World Imagery (Wayback 2023-03-15)",
+    "release_id": "44873"
+  },
+  {
+    "ident": "WB_2023_R01",
+    "title": "World Imagery (Wayback 2023-02-23)",
+    "release_id": "57965"
+  },
+  {
+    "ident": "WB_2023_R00",
+    "title": "World Imagery (Wayback 2023-01-11)",
+    "release_id": "11475"
+  },
+  {
+    "ident": "WB_2022_R15",
+    "title": "World Imagery (Wayback 2022-12-14)",
+    "release_id": "45134"
+  },
+  {
+    "ident": "WB_2022_R14",
+    "title": "World Imagery (Wayback 2022-11-02)",
+    "release_id": "7110"
+  },
+  {
+    "ident": "WB_2022_R13",
+    "title": "World Imagery (Wayback 2022-10-12)",
+    "release_id": "44988"
+  },
+  {
+    "ident": "WB_2022_R12",
+    "title": "World Imagery (Wayback 2022-09-21)",
+    "release_id": "47471"
+  },
+  {
+    "ident": "WB_2022_R11",
+    "title": "World Imagery (Wayback 2022-08-31)",
+    "release_id": "45441"
+  },
+  {
+    "ident": "WB_2022_R10",
+    "title": "World Imagery (Wayback 2022-08-10)",
+    "release_id": "17825"
+  },
+  {
+    "ident": "WB_2022_R09",
+    "title": "World Imagery (Wayback 2022-07-20)",
+    "release_id": "13851"
+  },
+  {
+    "ident": "WB_2022_R08",
+    "title": "World Imagery (Wayback 2022-06-29)",
+    "release_id": "4905"
+  },
+  {
+    "ident": "WB_2022_R07",
+    "title": "World Imagery (Wayback 2022-06-08)",
+    "release_id": "44710"
+  },
+  {
+    "ident": "WB_2022_R06",
+    "title": "World Imagery (Wayback 2022-05-18)",
+    "release_id": "5314"
+  },
+  {
+    "ident": "WB_2022_R05",
+    "title": "World Imagery (Wayback 2022-04-27)",
+    "release_id": "16245"
+  },
+  {
+    "ident": "WB_2022_R04",
+    "title": "World Imagery (Wayback 2022-04-06)",
+    "release_id": "48232"
+  },
+  {
+    "ident": "WB_2022_R03",
+    "title": "World Imagery (Wayback 2022-03-16)",
+    "release_id": "10321"
+  },
+  {
+    "ident": "WB_2022_R02",
+    "title": "World Imagery (Wayback 2022-02-24)",
+    "release_id": "10312"
+  },
+  {
+    "ident": "WB_2022_R01",
+    "title": "World Imagery (Wayback 2022-02-02)",
+    "release_id": "26083"
+  },
+  {
+    "ident": "WB_2022_R00",
+    "title": "World Imagery (Wayback 2022-01-12)",
+    "release_id": "42663"
+  },
+  {
+    "ident": "WB_2021_R17",
+    "title": "World Imagery (Wayback 2021-12-21)",
+    "release_id": "26120"
+  },
+  {
+    "ident": "WB_2021_R16",
+    "title": "World Imagery (Wayback 2021-11-30)",
+    "release_id": "48624"
+  },
+  {
+    "ident": "WB_2021_R15",
+    "title": "World Imagery (Wayback 2021-11-03)",
+    "release_id": "42403"
+  },
+  {
+    "ident": "WB_2021_R14",
+    "title": "World Imagery (Wayback 2021-10-13)",
+    "release_id": "16749"
+  },
+  {
+    "ident": "WB_2021_R13",
+    "title": "World Imagery (Wayback 2021-09-22)",
+    "release_id": "51313"
+  },
+  {
+    "ident": "WB_2021_R12",
+    "title": "World Imagery (Wayback 2021-09-01)",
+    "release_id": "47568"
+  },
+  {
+    "ident": "WB_2021_R11",
+    "title": "World Imagery (Wayback 2021-08-11)",
+    "release_id": "51423"
+  },
+  {
+    "ident": "WB_2021_R10",
+    "title": "World Imagery (Wayback 2021-07-21)",
+    "release_id": "8432"
+  },
+  {
+    "ident": "WB_2021_R09",
+    "title": "World Imagery (Wayback 2021-06-30)",
+    "release_id": "13534"
+  },
+  {
+    "ident": "WB_2021_R08",
+    "title": "World Imagery (Wayback 2021-06-09)",
+    "release_id": "48376"
+  },
+  {
+    "ident": "WB_2021_R07",
+    "title": "World Imagery (Wayback 2021-05-19)",
+    "release_id": "15423"
+  },
+  {
+    "ident": "WB_2021_R06",
+    "title": "World Imagery (Wayback 2021-04-28)",
+    "release_id": "27659"
+  },
+  {
+    "ident": "WB_2021_R05",
+    "title": "World Imagery (Wayback 2021-04-08)",
+    "release_id": "6863"
+  },
+  {
+    "ident": "WB_2021_R04",
+    "title": "World Imagery (Wayback 2021-03-17)",
+    "release_id": "5359"
+  },
+  {
+    "ident": "WB_2021_R03",
+    "title": "World Imagery (Wayback 2021-02-24)",
+    "release_id": "9812"
+  },
+  {
+    "ident": "WB_2021_R01",
+    "title": "World Imagery (Wayback 2021-01-13)",
+    "release_id": "1049"
+  },
+  {
+    "ident": "WB_2020_R16",
+    "title": "World Imagery (Wayback 2020-12-16)",
+    "release_id": "29260"
+  },
+  {
+    "ident": "WB_2020_R15",
+    "title": "World Imagery (Wayback 2020-11-18)",
+    "release_id": "20753"
+  },
+  {
+    "ident": "WB_2020_R14",
+    "title": "World Imagery (Wayback 2020-10-14)",
+    "release_id": "119"
+  },
+  {
+    "ident": "WB_2020_R13",
+    "title": "World Imagery (Wayback 2020-09-23)",
+    "release_id": "19187"
+  },
+  {
+    "ident": "WB_2020_R12",
+    "title": "World Imagery (Wayback 2020-09-02)",
+    "release_id": "9181"
+  },
+  {
+    "ident": "WB_2020_R11",
+    "title": "World Imagery (Wayback 2020-08-12)",
+    "release_id": "6049"
+  },
+  {
+    "ident": "WB_2020_R10",
+    "title": "World Imagery (Wayback 2020-07-22)",
+    "release_id": "9549"
+  },
+  {
+    "ident": "WB_2020_R09",
+    "title": "World Imagery (Wayback 2020-07-01)",
+    "release_id": "18289"
+  },
+  {
+    "ident": "WB_2020_R08",
+    "title": "World Imagery (Wayback 2020-06-10)",
+    "release_id": "11135"
+  },
+  {
+    "ident": "WB_2020_R07",
+    "title": "World Imagery (Wayback 2020-05-20)",
+    "release_id": "32645"
+  },
+  {
+    "ident": "WB_2020_R06",
+    "title": "World Imagery (Wayback 2020-04-29)",
+    "release_id": "15045"
+  },
+  {
+    "ident": "WB_2020_R05",
+    "title": "World Imagery (Wayback 2020-04-08)",
+    "release_id": "26751"
+  },
+  {
+    "ident": "WB_2020_R04",
+    "title": "World Imagery (Wayback 2020-03-23)",
+    "release_id": "16062"
+  },
+  {
+    "ident": "WB_2020_R03",
+    "title": "World Imagery (Wayback 2020-02-20)",
+    "release_id": "8495"
+  },
+  {
+    "ident": "WB_2020_R02",
+    "title": "World Imagery (Wayback 2020-01-30)",
+    "release_id": "21485"
+  },
+  {
+    "ident": "WB_2020_R01",
+    "title": "World Imagery (Wayback 2020-01-08)",
+    "release_id": "23001"
+  },
+  {
+    "ident": "WB_2019_R16",
+    "title": "World Imagery (Wayback 2019-12-12)",
+    "release_id": "4756"
+  },
+  {
+    "ident": "WB_2019_R14",
+    "title": "World Imagery (Wayback 2019-10-30)",
+    "release_id": "11060"
+  },
+  {
+    "ident": "WB_2019_R13",
+    "title": "World Imagery (Wayback 2019-10-09)",
+    "release_id": "11351"
+  },
+  {
+    "ident": "WB_2019_R12",
+    "title": "World Imagery (Wayback 2019-09-18)",
+    "release_id": "9892"
+  },
+  {
+    "ident": "WB_2019_R11",
+    "title": "World Imagery (Wayback 2019-08-28)",
+    "release_id": "30442"
+  },
+  {
+    "ident": "WB_2019_R10",
+    "title": "World Imagery (Wayback 2019-08-07)",
+    "release_id": "17216"
+  },
+  {
+    "ident": "WB_2019_R09",
+    "title": "World Imagery (Wayback 2019-07-17)",
+    "release_id": "16681"
+  },
+  {
+    "ident": "WB_2019_R08",
+    "title": "World Imagery (Wayback 2019-06-26)",
+    "release_id": "645"
+  },
+  {
+    "ident": "WB_2019_R07",
+    "title": "World Imagery (Wayback 2019-06-05)",
+    "release_id": "12576"
+  },
+  {
+    "ident": "WB_2019_R06",
+    "title": "World Imagery (Wayback 2019-05-15)",
+    "release_id": "9598"
+  },
+  {
+    "ident": "WB_2019_R05",
+    "title": "World Imagery (Wayback 2019-04-24)",
+    "release_id": "18063"
+  },
+  {
+    "ident": "WB_2019_R04",
+    "title": "World Imagery (Wayback 2019-04-03)",
+    "release_id": "18691"
+  },
+  {
+    "ident": "WB_2019_R03",
+    "title": "World Imagery (Wayback 2019-03-13)",
+    "release_id": "4383"
+  },
+  {
+    "ident": "WB_2019_R02",
+    "title": "World Imagery (Wayback 2019-02-21)",
+    "release_id": "17677"
+  },
+  {
+    "ident": "WB_2019_R01",
+    "title": "World Imagery (Wayback 2019-01-31)",
+    "release_id": "25944"
+  },
+  {
+    "ident": "WB_2019_R00",
+    "title": "World Imagery (Wayback 2019-01-09)",
+    "release_id": "6036"
+  },
+  {
+    "ident": "WB_2018_R17",
+    "title": "World Imagery (Wayback 2018-12-14)",
+    "release_id": "23448"
+  },
+  {
+    "ident": "WB_2018_R16",
+    "title": "World Imagery (Wayback 2018-11-29)",
+    "release_id": "239"
+  },
+  {
+    "ident": "WB_2018_R15",
+    "title": "World Imagery (Wayback 2018-11-07)",
+    "release_id": "3201"
+  },
+  {
+    "ident": "WB_2018_R14",
+    "title": "World Imagery (Wayback 2018-10-17)",
+    "release_id": "18820"
+  },
+  {
+    "ident": "WB_2018_R13",
+    "title": "World Imagery (Wayback 2018-09-26)",
+    "release_id": "14426"
+  },
+  {
+    "ident": "WB_2018_R12",
+    "title": "World Imagery (Wayback 2018-09-06)",
+    "release_id": "2168"
+  },
+  {
+    "ident": "WB_2018_R11",
+    "title": "World Imagery (Wayback 2018-08-15)",
+    "release_id": "1858"
+  },
+  {
+    "ident": "WB_2018_R10",
+    "title": "World Imagery (Wayback 2018-07-25)",
+    "release_id": "14829"
+  },
+  {
+    "ident": "WB_2018_R09",
+    "title": "World Imagery (Wayback 2018-06-27)",
+    "release_id": "11334"
+  },
+  {
+    "ident": "WB_2018_R08",
+    "title": "World Imagery (Wayback 2018-06-06)",
+    "release_id": "8249"
+  },
+  {
+    "ident": "WB_2018_R07",
+    "title": "World Imagery (Wayback 2018-05-16)",
+    "release_id": "32337"
+  },
+  {
+    "ident": "WB_2018_R06",
+    "title": "World Imagery (Wayback 2018-04-25)",
+    "release_id": "1296"
+  },
+  {
+    "ident": "WB_2018_R05",
+    "title": "World Imagery (Wayback 2018-04-11)",
+    "release_id": "20399"
+  },
+  {
+    "ident": "WB_2018_R04",
+    "title": "World Imagery (Wayback 2018-03-28)",
+    "release_id": "7072"
+  },
+  {
+    "ident": "WB_2018_R03",
+    "title": "World Imagery (Wayback 2018-03-14)",
+    "release_id": "8255"
+  },
+  {
+    "ident": "WB_2018_R02",
+    "title": "World Imagery (Wayback 2018-02-23)",
+    "release_id": "13067"
+  },
+  {
+    "ident": "WB_2018_R01",
+    "title": "World Imagery (Wayback 2018-01-31)",
+    "release_id": "10768"
+  },
+  {
+    "ident": "WB_2018_R00",
+    "title": "World Imagery (Wayback 2018-01-18)",
+    "release_id": "13045"
+  },
+  {
+    "ident": "WB_2017_R21",
+    "title": "World Imagery (Wayback 2018-01-08)",
+    "release_id": "13161"
+  },
+  {
+    "ident": "WB_2017_R19",
+    "title": "World Imagery (Wayback 2017-11-16)",
+    "release_id": "25521"
+  },
+  {
+    "ident": "WB_2017_R18",
+    "title": "World Imagery (Wayback 2017-10-25)",
+    "release_id": "23264"
+  },
+  {
+    "ident": "WB_2017_R17",
+    "title": "World Imagery (Wayback 2017-10-04)",
+    "release_id": "15212"
+  },
+  {
+    "ident": "WB_2017_R16",
+    "title": "World Imagery (Wayback 2017-09-13)",
+    "release_id": "18358"
+  },
+  {
+    "ident": "WB_2017_R15",
+    "title": "World Imagery (Wayback 2017-08-30)",
+    "release_id": "25379"
+  },
+  {
+    "ident": "WB_2017_R14",
+    "title": "World Imagery (Wayback 2017-08-10)",
+    "release_id": "14035"
+  },
+  {
+    "ident": "WB_2017_R13",
+    "title": "World Imagery (Wayback 2017-07-14)",
+    "release_id": "3319"
+  },
+  {
+    "ident": "WB_2017_R12",
+    "title": "World Imagery (Wayback 2017-06-27)",
+    "release_id": "4073"
+  },
+  {
+    "ident": "WB_2017_R11",
+    "title": "World Imagery (Wayback 2017-06-14)",
+    "release_id": "14765"
+  },
+  {
+    "ident": "WB_2017_R10",
+    "title": "World Imagery (Wayback 2017-05-31)",
+    "release_id": "14342"
+  },
+  {
+    "ident": "WB_2017_R09",
+    "title": "World Imagery (Wayback 2017-05-17)",
+    "release_id": "20365"
+  },
+  {
+    "ident": "WB_2017_R08",
+    "title": "World Imagery (Wayback 2017-05-03)",
+    "release_id": "784"
+  },
+  {
+    "ident": "WB_2017_R07",
+    "title": "World Imagery (Wayback 2017-04-19)",
+    "release_id": "1052"
+  },
+  {
+    "ident": "WB_2017_R06",
+    "title": "World Imagery (Wayback 2017-03-29)",
+    "release_id": "5205"
+  },
+  {
+    "ident": "WB_2017_R05",
+    "title": "World Imagery (Wayback 2017-03-15)",
+    "release_id": "29387"
+  },
+  {
+    "ident": "WB_2017_R04",
+    "title": "World Imagery (Wayback 2017-02-27)",
+    "release_id": "31026"
+  },
+  {
+    "ident": "WB_2017_R03",
+    "title": "World Imagery (Wayback 2017-02-08)",
+    "release_id": "27946"
+  },
+  {
+    "ident": "WB_2017_R02",
+    "title": "World Imagery (Wayback 2017-01-25)",
+    "release_id": "9486"
+  },
+  {
+    "ident": "WB_2017_R01",
+    "title": "World Imagery (Wayback 2017-01-11)",
+    "release_id": "577"
+  },
+  {
+    "ident": "WB_2016_R22",
+    "title": "World Imagery (Wayback 2016-12-20)",
+    "release_id": "18966"
+  },
+  {
+    "ident": "WB_2016_R21",
+    "title": "World Imagery (Wayback 2016-12-07)",
+    "release_id": "6678"
+  },
+  {
+    "ident": "WB_2016_R20",
+    "title": "World Imagery (Wayback 2016-11-16)",
+    "release_id": "21750"
+  },
+  {
+    "ident": "WB_2016_R19",
+    "title": "World Imagery (Wayback 2016-10-25)",
+    "release_id": "4222"
+  },
+  {
+    "ident": "WB_2016_R18",
+    "title": "World Imagery (Wayback 2016-10-12)",
+    "release_id": "13770"
+  },
+  {
+    "ident": "WB_2016_R16",
+    "title": "World Imagery (Wayback 2016-09-14)",
+    "release_id": "6984"
+  },
+  {
+    "ident": "WB_2016_R15",
+    "title": "World Imagery (Wayback 2016-08-31)",
+    "release_id": "9175"
+  },
+  {
+    "ident": "WB_2016_R14",
+    "title": "World Imagery (Wayback 2016-08-11)",
+    "release_id": "23601"
+  },
+  {
+    "ident": "WB_2016_R13",
+    "title": "World Imagery (Wayback 2016-07-20)",
+    "release_id": "5097"
+  },
+  {
+    "ident": "WB_2016_R12",
+    "title": "World Imagery (Wayback 2016-07-06)",
+    "release_id": "13240"
+  },
+  {
+    "ident": "WB_2016_R11",
+    "title": "World Imagery (Wayback 2016-06-13)",
+    "release_id": "11509"
+  },
+  {
+    "ident": "WB_2016_R10",
+    "title": "World Imagery (Wayback 2016-05-11)",
+    "release_id": "8551"
+  },
+  {
+    "ident": "WB_2016_R09",
+    "title": "World Imagery (Wayback 2016-04-28)",
+    "release_id": "5769"
+  },
+  {
+    "ident": "WB_2016_R08",
+    "title": "World Imagery (Wayback 2016-04-20)",
+    "release_id": "388"
+  },
+  {
+    "ident": "WB_2016_R06",
+    "title": "World Imagery (Wayback 2016-03-16)",
+    "release_id": "19085"
+  },
+  {
+    "ident": "WB_2016_R05",
+    "title": "World Imagery (Wayback 2016-03-02)",
+    "release_id": "20443"
+  },
+  {
+    "ident": "WB_2016_R04",
+    "title": "World Imagery (Wayback 2016-02-17)",
+    "release_id": "11262"
+  },
+  {
+    "ident": "WB_2016_R03",
+    "title": "World Imagery (Wayback 2016-02-04)",
+    "release_id": "6354"
+  },
+  {
+    "ident": "WB_2016_R02",
+    "title": "World Imagery (Wayback 2016-01-13)",
+    "release_id": "3515"
+  },
+  {
+    "ident": "WB_2015_R23",
+    "title": "World Imagery (Wayback 2015-12-16)",
+    "release_id": "28163"
+  },
+  {
+    "ident": "WB_2015_R20",
+    "title": "World Imagery (Wayback 2015-11-18)",
+    "release_id": "8781"
+  },
+  {
+    "ident": "WB_2015_R18",
+    "title": "World Imagery (Wayback 2015-10-28)",
+    "release_id": "11092"
+  },
+  {
+    "ident": "WB_2015_R17",
+    "title": "World Imagery (Wayback 2015-10-14)",
+    "release_id": "10850"
+  },
+  {
+    "ident": "WB_2015_R16",
+    "title": "World Imagery (Wayback 2015-09-30)",
+    "release_id": "3630"
+  },
+  {
+    "ident": "WB_2015_R15",
+    "title": "World Imagery (Wayback 2015-09-16)",
+    "release_id": "1431"
+  },
+  {
+    "ident": "WB_2015_R14",
+    "title": "World Imagery (Wayback 2015-09-02)",
+    "release_id": "30584"
+  },
+  {
+    "ident": "WB_2015_R13",
+    "title": "World Imagery (Wayback 2015-08-19)",
+    "release_id": "28219"
+  },
+  {
+    "ident": "WB_2015_R11",
+    "title": "World Imagery (Wayback 2015-07-08)",
+    "release_id": "24007"
+  },
+  {
+    "ident": "WB_2015_R10",
+    "title": "World Imagery (Wayback 2015-06-24)",
+    "release_id": "11952"
+  },
+  {
+    "ident": "WB_2015_R08",
+    "title": "World Imagery (Wayback 2015-05-13)",
+    "release_id": "19930"
+  },
+  {
+    "ident": "WB_2015_R07",
+    "title": "World Imagery (Wayback 2015-04-30)",
+    "release_id": "23880"
+  },
+  {
+    "ident": "WB_2015_R06",
+    "title": "World Imagery (Wayback 2015-04-15)",
+    "release_id": "9203"
+  },
+  {
+    "ident": "WB_2015_R05",
+    "title": "World Imagery (Wayback 2015-03-25)",
+    "release_id": "2730"
+  },
+  {
+    "ident": "WB_2015_R04",
+    "title": "World Imagery (Wayback 2015-03-18)",
+    "release_id": "15084"
+  },
+  {
+    "ident": "WB_2015_R02",
+    "title": "World Imagery (Wayback 2015-02-18)",
+    "release_id": "10443"
+  },
+  {
+    "ident": "WB_2015_R01",
+    "title": "World Imagery (Wayback 2015-01-21)",
+    "release_id": "20222"
+  },
+  {
+    "ident": "WB_2014_R21",
+    "title": "World Imagery (Wayback 2014-12-30)",
+    "release_id": "5844"
+  },
+  {
+    "ident": "WB_2014_R20",
+    "title": "World Imagery (Wayback 2014-12-18)",
+    "release_id": "14720"
+  },
+  {
+    "ident": "WB_2014_R19",
+    "title": "World Imagery (Wayback 2014-12-03)",
+    "release_id": "23383"
+  },
+  {
+    "ident": "WB_2014_R18",
+    "title": "World Imagery (Wayback 2014-11-12)",
+    "release_id": "30195"
+  },
+  {
+    "ident": "WB_2014_R17",
+    "title": "World Imagery (Wayback 2014-10-29)",
+    "release_id": "11019"
+  },
+  {
+    "ident": "WB_2014_R15",
+    "title": "World Imagery (Wayback 2014-10-01)",
+    "release_id": "22692"
+  },
+  {
+    "ident": "WB_2014_R14",
+    "title": "World Imagery (Wayback 2014-09-17)",
+    "release_id": "25586"
+  },
+  {
+    "ident": "WB_2014_R11",
+    "title": "World Imagery (Wayback 2014-07-30)",
+    "release_id": "5232"
+  },
+  {
+    "ident": "WB_2014_R10",
+    "title": "World Imagery (Wayback 2014-07-02)",
+    "release_id": "3026"
+  },
+  {
+    "ident": "WB_2014_R09",
+    "title": "World Imagery (Wayback 2014-06-25)",
+    "release_id": "11033"
+  },
+  {
+    "ident": "WB_2014_R08",
+    "title": "World Imagery (Wayback 2014-06-11)",
+    "release_id": "31144"
+  },
+  {
+    "ident": "WB_2014_R06",
+    "title": "World Imagery (Wayback 2014-05-14)",
+    "release_id": "16513"
+  },
+  {
+    "ident": "WB_2014_R05",
+    "title": "World Imagery (Wayback 2014-04-30)",
+    "release_id": "19819"
+  },
+  {
+    "ident": "WB_2014_R03",
+    "title": "World Imagery (Wayback 2014-03-26)",
+    "release_id": "4230"
+  },
+  {
+    "ident": "WB_2014_R01",
+    "title": "World Imagery (Wayback 2014-02-20)",
+    "release_id": "10"
+  }
+]
