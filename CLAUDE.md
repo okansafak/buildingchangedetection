@@ -8,7 +8,7 @@ GeoChange AI ("Atlas GeoChange" in the UI) is a Flask prototype that detects bui
 
 ## Commands
 
-No build step, linter config, or requirements file. Tests need `pip install pytest`. Dependencies (Python 3.10+): `flask`, `flask-cors`, `opencv-python-headless`, `numpy`, `pillow` (`torch`/`torchvision` are imported but unused).
+No build step, linter config, or requirements file. Tests need `pip install pytest`. Dependencies (Python 3.10+): `flask`, `flask-cors`, `opencv-python-headless`, `numpy`, `pillow`. `torch`/`torchvision` are installed in the environment but not used by the code.
 
 ```bash
 python app.py                 # serves http://127.0.0.1:5000 (debug=False, binds 0.0.0.0)
@@ -29,7 +29,7 @@ Root-level `test_fetch.py` / `test_wayback.py` are ad-hoc network scripts, not p
 
 The latest result is stored in the global `LAST_RESULTS['latest']`; `/api/export/geojson` and `/api/export/csv` read from it (single-user, in-memory). Opening or saving a project also overwrites `LAST_RESULTS` so exports match the loaded project.
 
-**Detector** — [model/change_detector.py](model/change_detector.py) is classical OpenCV, *not* a neural net (the README's "PyTorch SiamUnet" description is aspirational). Pipeline: weighted grayscale + LAB difference map → threshold + morphology → contours → classify each as new/demolished using T1 vs T2 edge density and brightness → Canny-based candidates in T2 that don't overlap changes become "existing" (capped at 25). Pixel coordinates are mapped linearly into `bounds = [south, west, north, east]`. When a ground-truth label is supplied (benchmarks with `use_gt`), it's blended into the diff map at 80% weight, so benchmark output is largely GT-driven. No precision/recall/IoU is actually computed.
+**Detector** — [model/change_detector.py](model/change_detector.py) is classical OpenCV, *not* a neural net (the README's "PyTorch SiamUnet" description is aspirational). Pipeline: weighted grayscale + LAB difference map → threshold + morphology → contours → classify each as new/demolished using T1 vs T2 edge density and brightness → Canny-based candidates in T2 that don't overlap changes become "existing" (capped at 25). `detect()` orchestrates private step methods; every building's record and GeoJSON feature is produced by `_build_record`, and per-type labels, colors and mask values live in `BUILDING_TYPES`. Pixel coordinates are mapped linearly into `bounds = [south, west, north, east]`. When a ground-truth label is supplied (benchmarks with `use_gt`), it's blended into the diff map at 80% weight, so benchmark output is largely GT-driven. No precision/recall/IoU is actually computed.
 
 The `detect()` return dict is the contract with the frontend and is persisted verbatim as a project's `results_data`: `stats`, `buildings` (each with geo `centroid` and pixel `px_coords`), `geojson`, and `overlays` (base64 PNG data URIs for mask, heatmap, T1, T2).
 
