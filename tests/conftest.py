@@ -15,6 +15,16 @@ def pytest_addoption(parser):
     )
 
 
+@pytest.fixture(autouse=True)
+def _block_network(monkeypatch):
+    """Tests must stay offline: any real urlopen call raises. Tests that need tiles override it (see fake_net)."""
+
+    def blocked(*args, **kwargs):
+        raise RuntimeError("network access blocked in tests")
+
+    monkeypatch.setattr("urllib.request.urlopen", blocked)
+
+
 @pytest.fixture
 def snapshot(request):
     update = request.config.getoption("--update-snapshots")

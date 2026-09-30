@@ -4,7 +4,7 @@ import math
 import os
 
 import pytest
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from model import live_satellite
 from model.live_satellite import LiveSatelliteFetcher
@@ -102,6 +102,44 @@ def test_unknown_years_fall_back_to_2014_and_2026(tmp_path, fake_net):
     fetcher.fetch_bitemporal_pair(LAT, LON, ZOOM, year_t1="1999", year_t2="2099")
     releases = {url.split("/tile/")[1].split("/")[0] for url in fake_net}
     assert releases == {"5844", "26334"}
+
+
+def test_live_detect_maps_polygons_inside_bounds(client, monkeypatch):
+    """T1 is a plain tile, T2 has bright squares: detected polygons must map into the live bounds."""
+    plain = _jpeg_bytes((60, 60, 60))
+    img = Image.new("RGB", (256, 256), (60, 60, 60))
+    draw = ImageDraw.Draw(img)
+    for x0, y0, size in ((40, 40, 50), (150, 60, 40), (80, 160, 60)):
+        draw.rectangle([x0, y0, x0 + size, y0 + size], fill=(250, 250, 250))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=95)
+    changed = buf.getvalue()
+
+    def fake_urlopen(req, timeout=None):
+        return FakeResponse(plain if "/tile/5844/" in req.full_url else changed)
+
+    monkeypatch.setattr(live_satellite.urllib.request, "urlopen", fake_urlopen)
+    res = client.post(
+        "/api/live/detect",
+        json={"lat": LAT, "lon": LON, "zoom": ZOOM, "year_t1": "2014", "year_t2": "2026"},
+    )
+    assert res.status_code == 200
+    body = res.get_json()
+    features = body["geojson"]["features"]
+    assert len(features) > 0
+
+    south, west, north, east = body["bounds"]
+    assert south < north and west < east
+    for feature in features:
+        for ring in feature["geometry"]["coordinates"]:
+            for lon, lat in ring:
+                assert west <= lon <= east
+                assert south <= lat <= north
+
+
+def test_network_is_blocked_by_default():
+    with pytest.raises(RuntimeError, match="network access blocked"):
+        live_satellite.urllib.request.urlopen("http://example.invalid/")
 
 
 def test_live_detect_endpoint(client, fake_net):

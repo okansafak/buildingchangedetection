@@ -8,7 +8,7 @@ GeoChange AI ("Atlas GeoChange" in the UI) is a Flask prototype that detects bui
 
 ## Commands
 
-No build step, linter config, or requirements file. Tests need `pip install pytest`. Dependencies (Python 3.10+): `flask`, `flask-cors`, `opencv-python-headless`, `numpy`, `pillow`. `torch`/`torchvision` are installed in the environment but not used by the code.
+No build step, linter config, or requirements file. Tests need `pip install pytest`. Dependencies (Python 3.10+): `flask`, `flask-cors`, `opencv-python-headless`, `numpy`, `pillow`. `torch`/`torchvision` are not used (the README's PyTorch description is aspirational).
 
 ```bash
 python app.py                 # serves http://127.0.0.1:5000 (debug=False, binds 0.0.0.0)
@@ -19,7 +19,7 @@ python test_fetch.py          # smoke test: fetch a live Wayback bitemporal pair
 python parse_wayback.py       # rebuild wayback_releases.json from Esri's WMTS capabilities
 ```
 
-Root-level `test_fetch.py` / `test_wayback.py` are ad-hoc network scripts, not pytest tests. `tests/snapshots/` pins the exact API output. If a snapshot test fails after a change, the change altered behavior: fix the code, and regenerate with `python -m pytest --update-snapshots` only for an intentional behavior change. Run everything from the repo root: `LiveSatelliteFetcher` (`static/live_cache`) and `ProjectManager` (`data/`) use cwd-relative paths, while `app.py` resolves samples/uploads via `app.root_path`.
+Root-level `test_fetch.py` / `test_wayback.py` are ad-hoc network scripts, not pytest tests. `tests/snapshots/` pins the exact API output. If a snapshot test fails after a change, the change altered behavior: fix the code, and regenerate with `python -m pytest --update-snapshots` only for an intentional behavior change. An OpenCV/NumPy upgrade or a different CPU can also shift overlay hashes or last-digit floats (PNG encoder builds and NumPy's SIMD `np.cos` differ), so confirm that (e.g. re-run on the previous commit) before changing code. Run everything from the repo root: `LiveSatelliteFetcher` (`static/live_cache`) and `ProjectManager` (`data/`) use cwd-relative paths, while `app.py` resolves samples/uploads via `app.root_path`.
 
 ## Architecture
 
