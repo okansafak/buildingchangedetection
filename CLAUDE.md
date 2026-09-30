@@ -24,7 +24,7 @@ Root-level `test_fetch.py` / `test_wayback.py` are ad-hoc network scripts, not p
 ## Architecture
 
 **Backend** — [app.py](app.py) holds all routes and module-level singletons (`detector`, `live_fetcher`, `project_mgr`). Three input paths all converge on `BuildingChangeDetector.detect()`:
-- `/api/detect` with a `scenario_id` from the hardcoded `SCENARIOS` dict (benchmark samples with fake geographic `center`s), or `scenario_id: "custom"` with server file paths returned by `/api/upload`.
+- `/api/detect` with a `scenario_id` from `SCENARIOS` in [model/scenarios.py](model/scenarios.py) (benchmark samples with fake geographic `center`s), or `scenario_id: "custom"` with server file paths returned by `/api/upload`.
 - `/api/live/detect` — `LiveSatelliteFetcher` downloads and stitches a 2×2 grid of 256px Esri Wayback tiles (512×512 px) for each year, returning images plus WGS84 `bounds` and GSD.
 
 The latest result is stored in the global `LAST_RESULTS['latest']`; `/api/export/geojson` and `/api/export/csv` read from it (single-user, in-memory). Opening or saving a project also overwrites `LAST_RESULTS` so exports match the loaded project.
