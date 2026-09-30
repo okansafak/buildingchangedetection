@@ -66,3 +66,14 @@ SCENARIOS = {
         "zoom": 17
     }
 }
+
+# Large local imagery for manual testing (sampla_data/ is gitignored, so these exist only
+# on machines that have the folder). Not georeferenced; served by /api/samples and run with engine "ml".
+LOCAL_SAMPLES = {
+    "yerel_basaksehir": {
+        "id": "yerel_basaksehir",
+        "title": "Başakşehir Ortofoto 2020 → 2026 (yerel örnek)",
+        "path_A": "sampla_data/2020.jpg",
+        "path_B": "sampla_data/2026.jpg",
+    },
+}

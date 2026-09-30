@@ -2,6 +2,7 @@ import os
 import time
 import json
 import csv
+import uuid
 from io import StringIO
 from flask import Flask, render_template, request, jsonify, send_file, Response
 from flask_cors import CORS
@@ -9,8 +10,12 @@ from werkzeug.utils import secure_filename
 from model.change_detector import BuildingChangeDetector
 from model.live_satellite import LiveSatelliteFetcher, WAYBACK_RELEASES, LIVE_HOTSPOTS
 from model.project_manager import ProjectManager
-from model import geo
-from model.scenarios import SCENARIOS
+from PIL import Image
+from model.ml_detector import MLChangeDetector, load_rgb
+from model.segmenter import ModelUnavailable
+from model.jobs import JobRunner
+from model import geo, georef
+from model.scenarios import SCENARIOS, LOCAL_SAMPLES
 
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -18,17 +23,41 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 CORS(app)
 
 detector = BuildingChangeDetector()
+ml_detector = MLChangeDetector()  # the ONNX model is downloaded/loaded on first use
+jobs = JobRunner()
 live_fetcher = LiveSatelliteFetcher()
 project_mgr = ProjectManager()
 
 UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32 MB max
+app.config['RESULTS_FOLDER'] = os.path.join(app.root_path, 'static', 'results')
+MAX_UPLOAD_MB = 512  # two full-resolution aerial mosaics (e.g. 2 x 8192 x 4468 GeoTIFF)
+app.config['MAX_CONTENT_LENGTH'] = MAX_UPLOAD_MB * 1024 * 1024
+
+MODEL_ERROR = "Yapay zeka modeli yüklenemedi, internet bağlantısını kontrol edin: {}"
 
 
 # Cache last detection results for download
 LAST_RESULTS = {}
+
+
+@app.errorhandler(413)
+def upload_too_large(_error):
+    return jsonify({"success": False, "error": f"Dosyalar çok büyük (en fazla {MAX_UPLOAD_MB} MB)."}), 413
+
+
+def _uploaded_path(path):
+    """Real path of an existing file inside UPLOAD_FOLDER, else None (clients send server paths)."""
+    if not path:
+        return None
+    folder = os.path.realpath(app.config['UPLOAD_FOLDER'])
+    real = os.path.realpath(path)
+    try:
+        inside = os.path.commonpath([folder, real]) == folder
+    except ValueError:  # different drives on Windows
+        return None
+    return real if inside and os.path.isfile(real) else None
 
 @app.route('/')
 def index():
@@ -74,6 +103,8 @@ def run_live_detect():
     """
     Fetches real-time multi-temporal satellite imagery from Esri Wayback
     for any global coordinates and executes the building change detection engine.
+    engine "ml" (the UI's choice) runs the building segmentation model synchronously:
+    a 512 px Wayback patch is a single model tile per date.
     """
     data = request.json or {}
     lat = float(data.get('lat', 41.1070))
@@ -83,7 +114,8 @@ def run_live_detect():
     year_t2 = str(data.get('year_t2', '2026'))
     threshold = float(data.get('threshold', 0.45))
     min_area_m2 = float(data.get('min_area_m2', 40.0))
-    
+    engine = data.get('engine', 'classic')
+
     start_time = time.time()
     try:
         # Fetch live bi-temporal satellite imagery
@@ -95,27 +127,33 @@ def run_live_detect():
             year_t2=year_t2,
             grid_size=2 # 512x512 px mosaic (~500m x 500m)
         )
-        
+
         # Run building change detection
-        result = detector.detect(
-            img1=img_t1,
-            img2=img_t2,
-            ground_truth=None,
-            threshold=threshold,
-            min_area_m2=min_area_m2,
-            gsd=gsd,
-            bounds=bounds
-        )
-        
+        if engine == 'ml':
+            tiles_ref = georef.from_bounds_wgs84(bounds, img_t2.width, img_t2.height, source="tiles")
+            result = ml_detector.detect(img_t1, img_t2, georef=tiles_ref, min_area_m2=min_area_m2, mode="fast")
+        else:
+            result = detector.detect(
+                img1=img_t1,
+                img2=img_t2,
+                ground_truth=None,
+                threshold=threshold,
+                min_area_m2=min_area_m2,
+                gsd=gsd,
+                bounds=bounds
+            )
+
         elapsed = round(time.time() - start_time, 2)
         result["inference_time_sec"] = elapsed
         result["center"] = [lat, lon]
         result["mode"] = "live_satellite"
         result["years"] = {"t1": year_t1, "t2": year_t2}
-        
+
         LAST_RESULTS['latest'] = result
         return jsonify(result)
-        
+
+    except ModelUnavailable as e:
+        return jsonify({"success": False, "error": MODEL_ERROR.format(e)}), 503
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -124,14 +162,16 @@ def run_live_detect():
 @app.route('/api/detect', methods=['POST'])
 def run_detect():
     data = request.json or {}
+    if data.get('engine', 'classic') == 'ml':
+        return _run_detect_ml(data)
     scenario_id = data.get('scenario_id', 'levir1')
     threshold = float(data.get('threshold', 0.45))
     min_area_m2 = float(data.get('min_area_m2', 30.0))
     gsd = float(data.get('gsd', 0.5))
     use_gt = bool(data.get('use_gt', True))
-    
+
     custom_center = data.get('center') # [lat, lon]
-    
+
     if scenario_id in SCENARIOS:
         sc = SCENARIOS[scenario_id]
         path_A = os.path.join(app.root_path, sc['path_A'])
@@ -140,11 +180,11 @@ def run_detect():
         center = custom_center if custom_center else sc['center']
         gsd = sc.get('gsd', gsd)
     elif scenario_id == 'custom':
-        path_A = data.get('path_A')
-        path_B = data.get('path_B')
+        path_A = _uploaded_path(data.get('path_A'))
+        path_B = _uploaded_path(data.get('path_B'))
         path_label = None
         center = custom_center if custom_center else [41.0082, 28.9784] # Istanbul default
-        if not path_A or not os.path.exists(path_A) or not path_B or not os.path.exists(path_B):
+        if not path_A or not path_B:
             return jsonify({"success": False, "error": "Geçerli T1 ve T2 yüklenen görüntüleri bulunamadı."}), 400
     else:
         return jsonify({"success": False, "error": f"Bilinmeyen senaryo: {scenario_id}"}), 404
@@ -152,7 +192,7 @@ def run_detect():
     # Calculate geographic bounds around center (bundled samples are all 256x256)
     lat, lon = center[0], center[1]
     bounds = geo.bounds_from_center(lat, lon, 256, 256, gsd)
-    
+
     start_time = time.time()
     result = detector.detect(
         img1=path_A,
@@ -167,39 +207,174 @@ def run_detect():
     result["inference_time_sec"] = elapsed
     result["center"] = center
     result["scenario_id"] = scenario_id
-    
+
     # Store for export
     LAST_RESULTS['latest'] = result
-    
+
     return jsonify(result)
+
+
+def _resolve_georef(path_A, path_B, manual):
+    """(GeoRef of T2's grid or None, GSD override or None) from sidecars/GeoTIFF tags and manual entry.
+    Raises georef.GeoRefError with a Turkish message."""
+    epsg = manual.get('epsg') or None
+    gsd = manual.get('gsd')
+    if gsd not in (None, ''):
+        gsd = float(gsd)
+        if not 0.01 <= gsd <= 100:
+            raise georef.GeoRefError("GSD 0.01–100 m/piksel aralığında olmalı.")
+    else:
+        gsd = None
+    size_A = georef.image_size(path_A)
+    size_B = georef.image_size(path_B)
+    if manual.get('bounds'):
+        # Manual bounds describe the pair after T1 is resized onto T2's grid
+        return georef.from_bounds_wgs84(manual['bounds'], *size_B), gsd
+    ref_A = georef.read_for_image(path_A, epsg)
+    ref_B = georef.read_for_image(path_B, epsg)
+    return georef.pair_reference(ref_A, size_A, ref_B, size_B), gsd
+
+
+def _run_detect_ml(data):
+    """Validates the request, then runs MLChangeDetector as a background job (202 + job_id)."""
+    scenario_id = data.get('scenario_id', 'levir1')
+    min_area_m2 = float(data.get('min_area_m2', 30.0))
+    mode = data.get('analysis_mode', 'fast')
+    if mode not in ('fast', 'deep'):
+        return jsonify({"success": False, "error": f"Bilinmeyen analiz modu: {mode}"}), 400
+    pair_ref, gsd, path_label = None, None, None
+
+    if scenario_id in SCENARIOS or scenario_id in LOCAL_SAMPLES:
+        sc = SCENARIOS.get(scenario_id) or LOCAL_SAMPLES[scenario_id]
+        path_A = os.path.join(app.root_path, sc['path_A'])
+        path_B = os.path.join(app.root_path, sc['path_B'])
+        if not (os.path.isfile(path_A) and os.path.isfile(path_B)):
+            return jsonify({"success": False, "error": f"Örnek görüntüler bulunamadı: {sc['path_A']}, {sc['path_B']}"}), 404
+        if sc.get('path_label') and data.get('use_gt', True):
+            path_label = os.path.join(app.root_path, sc['path_label'])  # scored against, never blended in
+        gsd = sc.get('gsd')  # benchmark centres are fictional: known scale, no georeference
+    elif scenario_id == 'custom':
+        path_A = _uploaded_path(data.get('path_A'))
+        path_B = _uploaded_path(data.get('path_B'))
+        if not path_A or not path_B:
+            return jsonify({"success": False, "error": "Geçerli T1 ve T2 yüklenen görüntüleri bulunamadı."}), 400
+        try:
+            pair_ref, gsd = _resolve_georef(path_A, path_B, data.get('manual_georef') or {})
+        except (georef.GeoRefError, ValueError) as e:
+            return jsonify({"success": False, "error": str(e)}), 400
+    else:
+        return jsonify({"success": False, "error": f"Bilinmeyen senaryo: {scenario_id}"}), 404
+
+    run_id = uuid.uuid4().hex[:12]
+    out_dir = os.path.join(app.config['RESULTS_FOLDER'], run_id)
+
+    def work(report):
+        start_time = time.time()
+        try:
+            result = ml_detector.detect(
+                path_A, path_B, georef=pair_ref, gsd=gsd, min_area_m2=min_area_m2, mode=mode,
+                ground_truth=path_label, progress=report,
+                out_dir=out_dir, url_prefix=f"/static/results/{run_id}",
+            )
+        except ModelUnavailable as e:
+            raise RuntimeError(MODEL_ERROR.format(e)) from e
+        result["inference_time_sec"] = round(time.time() - start_time, 2)
+        result["scenario_id"] = scenario_id
+        LAST_RESULTS['latest'] = result
+        return result
+
+    return jsonify({"success": True, "job_id": jobs.submit(work)}), 202
+
+
+@app.route('/api/jobs/<job_id>', methods=['GET'])
+def get_job(job_id):
+    job = jobs.get(job_id)
+    if job is None:
+        return jsonify({"success": False, "error": "İş bulunamadı."}), 404
+    return jsonify({
+        "success": True,
+        "status": job["status"],      # running | done | error
+        "progress": job["progress"],  # 0..1
+        "stage": job["stage"],
+        "result": job["result"] if job["status"] == "done" else None,
+        "error": job["error"],
+    })
+
+
+@app.route('/api/samples/<sample_id>/<which>', methods=['GET'])
+def sample_image(sample_id, which):
+    """T1 (A) / T2 (B) image of a bundled benchmark or a local sample, for the step-2 preview."""
+    sc = SCENARIOS.get(sample_id) or LOCAL_SAMPLES.get(sample_id)
+    key = {"A": "path_A", "B": "path_B"}.get(which)
+    path = os.path.join(app.root_path, sc[key]) if sc and key else None
+    if not path or not os.path.isfile(path):
+        return jsonify({"success": False, "error": "Örnek görüntü bulunamadı."}), 404
+    return send_file(path)
+
+
+def _preview_url(path, fname):
+    """URL the browser can display: TIFFs get a JPEG preview (longest side 2048 px) next to them."""
+    if not path.lower().endswith(georef.GEOTIFF_EXTS):
+        return f"/static/uploads/{fname}"
+    preview = Image.fromarray(load_rgb(path))
+    preview.thumbnail((2048, 2048))
+    preview.save(path + ".preview.jpg", quality=88)
+    return f"/static/uploads/{fname}.preview.jpg"
+
+
+def _save_sidecars(image_path, suffix):
+    """Stores optional world file / .prj uploads (fields world_<suffix>, prj_<suffix>) next to the image."""
+    stem = os.path.splitext(image_path)[0]
+    world = request.files.get(f'world_{suffix}')
+    if world and world.filename:
+        ext = os.path.splitext(world.filename)[1].lower()
+        if ext not in georef.WORLD_FILE_EXTS:
+            raise georef.GeoRefError(f"Geçersiz world file uzantısı: {ext} (desteklenen: {', '.join(georef.WORLD_FILE_EXTS)})")
+        world.save(stem + ext)
+    prj = request.files.get(f'prj_{suffix}')
+    if prj and prj.filename:
+        prj.save(stem + '.prj')
+
 
 @app.route('/api/upload', methods=['POST'])
 def upload_images():
     if 'image_t1' not in request.files or 'image_t2' not in request.files:
         return jsonify({"success": False, "error": "Her iki görüntü (T1 ve T2) gereklidir."}), 400
-        
+
     f1 = request.files['image_t1']
     f2 = request.files['image_t2']
-    
+
     if f1.filename == '' or f2.filename == '':
         return jsonify({"success": False, "error": "Seçilen dosya adı geçersiz."}), 400
-        
+
     ts = int(time.time())
     fname1 = f"t1_{ts}_{secure_filename(f1.filename)}"
     fname2 = f"t2_{ts}_{secure_filename(f2.filename)}"
-    
+
     save_path1 = os.path.join(app.config['UPLOAD_FOLDER'], fname1)
     save_path2 = os.path.join(app.config['UPLOAD_FOLDER'], fname2)
-    
+
     f1.save(save_path1)
     f2.save(save_path2)
-    
+    try:
+        _save_sidecars(save_path1, 't1')
+        _save_sidecars(save_path2, 't2')
+    except georef.GeoRefError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+    georef_A, georef_A_error = georef.describe(save_path1)
+    georef_B, georef_B_error = georef.describe(save_path2)
+
     return jsonify({
         "success": True,
         "path_A": save_path1,
         "path_B": save_path2,
-        "url_A": f"/static/uploads/{fname1}",
-        "url_B": f"/static/uploads/{fname2}"
+        "url_A": _preview_url(save_path1, fname1),
+        "url_B": _preview_url(save_path2, fname2),
+        "georef_A": georef_A,
+        "georef_B": georef_B,
+        "georef_A_error": georef_A_error,
+        "georef_B_error": georef_B_error,
     })
 
 @app.route('/api/export/geojson', methods=['GET'])

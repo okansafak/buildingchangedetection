@@ -48,7 +48,10 @@ def snapshot(request):
 def app_module(tmp_path, monkeypatch):
     """The Flask app module with DB, uploads and tile cache redirected into tmp_path."""
     import app as app_mod
+    from fakes import FakeSegmenter
+    from model.jobs import JobRunner
     from model.live_satellite import LiveSatelliteFetcher
+    from model.ml_detector import MLChangeDetector
     from model.project_manager import ProjectManager
 
     upload_dir = tmp_path / "uploads"
@@ -56,6 +59,9 @@ def app_module(tmp_path, monkeypatch):
     monkeypatch.setattr(app_mod, "project_mgr", ProjectManager(data_dir=str(tmp_path / "data")))
     monkeypatch.setattr(app_mod, "live_fetcher", LiveSatelliteFetcher(cache_dir=str(tmp_path / "live_cache")))
     monkeypatch.setitem(app_mod.app.config, "UPLOAD_FOLDER", str(upload_dir))
+    monkeypatch.setitem(app_mod.app.config, "RESULTS_FOLDER", str(tmp_path / "results"))
+    monkeypatch.setattr(app_mod, "ml_detector", MLChangeDetector(FakeSegmenter()))
+    monkeypatch.setattr(app_mod, "jobs", JobRunner(sync=True))  # jobs finish before submit() returns
     app_mod.LAST_RESULTS.clear()
     yield app_mod
     app_mod.LAST_RESULTS.clear()
