@@ -2359,4 +2359,68 @@ input[type="range"]::-moz-range-thumb {
     border: 2px solid var(--bg-card);
 }
 
-
+/* Upload: optional georeference and analysis mode */
+.georef-details {
+    margin-top: 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+}
+.georef-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.georef-hint {
+    margin: 8px 0 12px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+.georef-manual-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+.georef-manual-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+.analysis-mode-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+}
+.analysis-mode-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.analysis-mode-option:has(input:checked) {
+    border-color: var(--accent-primary);
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+}
+.building-card-more {
+    padding: 10px;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+@media (max-width: 640px) {
+    .georef-manual-grid,
+    .analysis-mode-group {
+        grid-template-columns: 1fr;
+    }
+}

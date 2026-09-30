@@ -207,6 +207,14 @@ const el = {
     lblSelectedZoom: document.getElementById('lbl-selected-zoom'),
     inputUploadT1: document.getElementById('input-upload-t1'),
     inputUploadT2: document.getElementById('input-upload-t2'),
+    inputWorldT1: document.getElementById('input-world-t1'),
+    inputWorldT2: document.getElementById('input-world-t2'),
+    inputGeorefGsd: document.getElementById('input-georef-gsd'),
+    inputGeorefEpsg: document.getElementById('input-georef-epsg'),
+    inputGeorefSouth: document.getElementById('input-georef-south'),
+    inputGeorefWest: document.getElementById('input-georef-west'),
+    inputGeorefNorth: document.getElementById('input-georef-north'),
+    inputGeorefEast: document.getElementById('input-georef-east'),
     selectBenchmark: document.getElementById('select-benchmark'),
     btnGotoStep2: document.getElementById('btn-goto-step-2'),
     
@@ -778,6 +786,70 @@ function initSelectMap() {
 // ==========================================
 // STEP 1 -> STEP 2: Prepare or Fetch Images
 // ==========================================
+// ==========================================
+// GEOREFERENCE, ANALYSIS MODE & DETECTION JOBS
+// ==========================================
+const MAX_EXISTING_CARDS = 200;      // sidebar cards for unchanged buildings (changed ones are always listed)
+const MAX_LABELLED_BUILDINGS = 300;  // above this, only changed buildings get SVG number labels
+
+// World files and .prj share one multi-file input per image; the server expects world_* / prj_* fields
+function appendSidecars(formData, input, suffix) {
+    Array.from(input?.files || []).forEach(file => {
+        const field = file.name.toLowerCase().endsWith('.prj') ? `prj_${suffix}` : `world_${suffix}`;
+        formData.append(field, file);
+    });
+}
+
+function getManualGeoref() {
+    const num = (input) => (input && input.value !== '' ? parseFloat(input.value) : null);
+    const manual = {};
+    const gsd = num(el.inputGeorefGsd);
+    const epsg = num(el.inputGeorefEpsg);
+    const bounds = [el.inputGeorefSouth, el.inputGeorefWest, el.inputGeorefNorth, el.inputGeorefEast].map(num);
+    if (gsd !== null) manual.gsd = gsd;
+    if (epsg !== null) manual.epsg = epsg;
+    if (bounds.every(v => v !== null)) manual.bounds = bounds;
+    return manual;
+}
+
+function getAnalysisMode() {
+    const checked = document.querySelector('input[name="analysis-mode"]:checked');
+    return checked ? checked.value : 'fast';
+}
+
+function describeGeoref(label, georef, error) {
+    if (error) return `${label}: konum okunamadı (${error})`;
+    if (!georef) return `${label}: georeferanssız`;
+    const source = georef.source === 'geotiff' ? 'GeoTIFF' : 'World file';
+    return `${label}: ${source} · ${georef.crs} · ${georef.gsd_m} m/piksel`;
+}
+
+function formatArea(areaM2, areaPx) {
+    if (areaM2 !== null && areaM2 !== undefined) return `${areaM2} m²`;
+    if (areaPx !== null && areaPx !== undefined) return `${areaPx} piksel`;
+    return '—';
+}
+
+// POST /api/detect; engine "ml" answers 202 + job_id, so poll /api/jobs until the job ends
+async function runDetectionJob(payload) {
+    const res = await fetch('/api/detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const start = await res.json();
+    if (!start.success || !start.job_id) return start;
+    for (;;) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const job = await (await fetch(`/api/jobs/${start.job_id}`)).json();
+        if (!job.success) return job;
+        if (job.status === 'done') return job.result;
+        if (job.status === 'error') return { success: false, error: job.error };
+        const pct = Math.round((job.progress || 0) * 100);
+        el.btnRunBuildingDetection.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> %${pct} · ${job.stage}`;
+    }
+}
+
 async function handleStep1Next() {
     el.btnGotoStep2.disabled = true;
     el.btnGotoStep2.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Görüntüler Hazırlanıyor...';
@@ -815,7 +887,8 @@ async function handleStep1Next() {
                     year_t1: y1,
                     year_t2: y2,
                     threshold: aiConf.threshold,
-                    min_area_m2: aiConf.minArea
+                    min_area_m2: aiConf.minArea,
+                    engine: 'ml'
                 })
             });
             const data = await res.json();
@@ -836,9 +909,11 @@ async function handleStep1Next() {
             el.lblSwipeY2.textContent = "T2 (Sonra)";
             el.badgeYearT1.innerHTML = `<i class="fa-solid fa-backward"></i> Solda 1. Görüntü: T1`;
             el.badgeYearT2.innerHTML = `<i class="fa-solid fa-forward"></i> Sağda 2. Görüntü: T2`;
-            el.step2InfoText.textContent = `LEVIR-CD Benchmark seti (${scId}) çifti hazırlandı.`;
-            el.imgPreviewT1.src = `/static/samples/${scId}/A.png`;
-            el.imgPreviewT2.src = `/static/samples/${scId}/B.png`;
+            el.step2InfoText.textContent = scId.startsWith('yerel_')
+                ? 'Yerel örnek veri (sampla_data) hazırlandı. Görüntüler georeferanssız: sonuçlar piksel cinsinden gösterilecek.'
+                : `LEVIR-CD Benchmark seti (${scId}) çifti hazırlandı.`;
+            el.imgPreviewT1.src = `/api/samples/${scId}/A`;
+            el.imgPreviewT2.src = `/api/samples/${scId}/B`;
             state.resultsData = null;
             goToStep(2);
 
@@ -853,6 +928,8 @@ async function handleStep1Next() {
             const formData = new FormData();
             formData.append('image_t1', el.inputUploadT1.files[0]);
             formData.append('image_t2', el.inputUploadT2.files[0]);
+            appendSidecars(formData, el.inputWorldT1, 't1');
+            appendSidecars(formData, el.inputWorldT2, 't2');
             
             const uploadRes = await fetch('/api/upload', {
                 method: 'POST',
@@ -872,7 +949,7 @@ async function handleStep1Next() {
             el.lblSwipeY2.textContent = "T2 (Sonra)";
             el.badgeYearT1.innerHTML = `<i class="fa-solid fa-backward"></i> Solda 1. Görüntü: T1`;
             el.badgeYearT2.innerHTML = `<i class="fa-solid fa-forward"></i> Sağda 2. Görüntü: T2`;
-            el.step2InfoText.textContent = `Yüklenen özel fotoğraflarınız hazırlandı.`;
+            el.step2InfoText.textContent = `Yüklenen fotoğraflar hazırlandı. ${describeGeoref('T1', uploadData.georef_A, uploadData.georef_A_error)} — ${describeGeoref('T2', uploadData.georef_B, uploadData.georef_B_error)}`;
             state.resultsData = null;
             goToStep(2);
         }
@@ -899,31 +976,23 @@ async function handleRunDetection() {
         
         if (!data || (state.sourceType !== 'live-hotspot' && state.sourceType !== 'map-click')) {
             if (state.sourceType === 'benchmark-set') {
-                const res = await fetch('/api/detect', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        scenario_id: state.currentBenchmarkId,
-                        threshold: aiConf.threshold,
-                        min_area_m2: aiConf.minArea,
-                        use_gt: true
-                    })
+                data = await runDetectionJob({
+                    engine: 'ml',
+                    scenario_id: state.currentBenchmarkId,
+                    min_area_m2: aiConf.minArea,
+                    analysis_mode: 'fast',
+                    use_gt: true
                 });
-                data = await res.json();
             } else if (state.sourceType === 'custom-upload') {
-                const res = await fetch('/api/detect', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        scenario_id: 'custom',
-                        path_A: state.customFiles.path_A,
-                        path_B: state.customFiles.path_B,
-                        threshold: aiConf.threshold,
-                        min_area_m2: aiConf.minArea,
-                        use_gt: false
-                    })
+                data = await runDetectionJob({
+                    engine: 'ml',
+                    scenario_id: 'custom',
+                    path_A: state.customFiles.path_A,
+                    path_B: state.customFiles.path_B,
+                    min_area_m2: aiConf.minArea,
+                    analysis_mode: getAnalysisMode(),
+                    manual_georef: getManualGeoref()
                 });
-                data = await res.json();
             }
             state.resultsData = data;
         }
@@ -935,6 +1004,12 @@ async function handleRunDetection() {
 
         // 1. Switch to Step 3
         goToStep(3);
+        if (data.metrics) {
+            const m = data.metrics;
+            showToast(`Etiketle karşılaştırma — F1: ${m.f1} · IoU: ${m.iou} · Kesinlik: ${m.precision} · Duyarlılık: ${m.recall}`, 'success', 9000);
+        } else if (data.engine === 'ml' && !data.georef && state.sourceType === 'custom-upload') {
+            showToast('Görüntüler georeferanssız: alanlar ve dışa aktarılan koordinatlar piksel cinsindendir.', 'info', 7000);
+        }
 
         // 2. Render purely on downloaded/uploaded images in L.CRS.Simple
         setTimeout(() => {
@@ -961,7 +1036,7 @@ function renderPureImageResults(data) {
     if (el.resCountNew) el.resCountNew.textContent = stats.new_buildings_count || 0;
     if (el.resCountDem) el.resCountDem.textContent = stats.demolished_count || 0;
     if (el.resCountExist) el.resCountExist.textContent = stats.existing_count || 0;
-    if (el.resTotalArea) el.resTotalArea.textContent = `${stats.total_changed_m2 || 0} m²`;
+    if (el.resTotalArea) el.resTotalArea.textContent = formatArea(stats.total_changed_m2, stats.total_changed_px);
     
     // Layer badges
     if (el.layerBadgeNew) el.layerBadgeNew.textContent = stats.new_buildings_count || 0;
@@ -1050,7 +1125,7 @@ function renderPureImageResults(data) {
         }
 
         // Add Number Badge in SVG
-        if (b.centroid_px && el.svgGroupLabels) {
+        if (b.centroid_px && el.svgGroupLabels && (b.type !== 'existing' || buildings.length <= MAX_LABELLED_BUILDINGS)) {
             const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             text.setAttribute('x', b.centroid_px[0]);
             text.setAttribute('y', b.centroid_px[1]);
@@ -1065,7 +1140,10 @@ function renderPureImageResults(data) {
     // 4. Populate Left Sidebar Building Cards
     if (el.buildingItemsList) {
         el.buildingItemsList.innerHTML = '';
-        buildings.forEach(b => {
+        const changed = buildings.filter(b => b.type !== 'existing');
+        const existing = buildings.filter(b => b.type === 'existing');
+        const cardBuildings = changed.concat(existing.slice(0, MAX_EXISTING_CARDS));
+        cardBuildings.forEach(b => {
             const item = document.createElement('div');
             item.className = 'building-card-item';
             item.id = `card-building-${b.id}`;
@@ -1080,8 +1158,8 @@ function renderPureImageResults(data) {
                     <span class="badge-b-type ${badgeClass}">${b.type_tr}</span>
                 </div>
                 <div class="building-meta-row">
-                    <span>Taban: <strong>${b.area_m2} m²</strong></span>
-                    <span>Çevre: ${b.perimeter_m} m</span>
+                    <span>Taban: <strong>${formatArea(b.area_m2, b.area_px)}</strong></span>
+                    <span>Çevre: ${b.perimeter_m != null ? b.perimeter_m + ' m' : '—'}</span>
                     <span>Güven: %${b.confidence_pct}</span>
                 </div>
             `;
@@ -1092,6 +1170,12 @@ function renderPureImageResults(data) {
 
             el.buildingItemsList.appendChild(item);
         });
+        if (existing.length > MAX_EXISTING_CARDS) {
+            const more = document.createElement('div');
+            more.className = 'building-card-more';
+            more.textContent = `+${existing.length - MAX_EXISTING_CARDS} mevcut bina daha (görüntü üzerinde gösteriliyor)`;
+            el.buildingItemsList.appendChild(more);
+        }
     }
 
     // 5. Reset Stage View & apply 50% Swipe Split
@@ -1143,8 +1227,8 @@ function showBuildingTooltip(b, event) {
     el.buildingHoverTooltip.innerHTML = `
         <div style="font-weight:700; margin-bottom:2px;">${b.icon} Bina #${b.id} - ${b.type_tr}</div>
         <div style="font-size:0.7rem; color:#cbd5e1; display:flex; gap:8px;">
-            <span>Taban: <strong>${b.area_m2} m²</strong></span>
-            <span>Çevre: ${b.perimeter_m} m</span>
+            <span>Taban: <strong>${formatArea(b.area_m2, b.area_px)}</strong></span>
+            <span>Çevre: ${b.perimeter_m != null ? b.perimeter_m + ' m' : '—'}</span>
             <span>Güven: %${b.confidence_pct}</span>
         </div>
     `;
@@ -1525,6 +1609,19 @@ function initModals() {
                 el.selectHotspot.value = hotspotId;
                 updateHotspotCard(hotspotId);
             }
+            handleStep1Next();
+        });
+    });
+
+    // Discover: local sample pairs (sampla_data/) run through the benchmark flow without a label
+    document.querySelectorAll('.btn-local-sample').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const sampleId = btn.closest('.discover-card').getAttribute('data-local-sample');
+            closeModal('modal-discover');
+            createNewProject('benchmark-set');
+            state.currentBenchmarkId = sampleId;
+            if (el.selectBenchmark) el.selectBenchmark.value = sampleId;
             handleStep1Next();
         });
     });

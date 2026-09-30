@@ -353,12 +353,46 @@
                             <div class="upload-grid">
                                 <div class="upload-box">
                                     <label><i class="fa-regular fa-image"></i> 1. Önceki Durum Fotoğrafı (T1):</label>
-                                    <input type="file" id="input-upload-t1" accept="image/*" class="file-input">
+                                    <input type="file" id="input-upload-t1" accept="image/*,.tif,.tiff" class="file-input">
                                 </div>
                                 <div class="upload-box">
                                     <label><i class="fa-regular fa-image"></i> 2. Sonraki Durum Fotoğrafı (T2):</label>
-                                    <input type="file" id="input-upload-t2" accept="image/*" class="file-input">
+                                    <input type="file" id="input-upload-t2" accept="image/*,.tif,.tiff" class="file-input">
                                 </div>
+                            </div>
+
+                            <details class="georef-details">
+                                <summary><i class="fa-solid fa-location-crosshairs"></i> Konum Bilgisi (isteğe bağlı)</summary>
+                                <p class="georef-hint">GeoTIFF dosyalarının konumu otomatik okunur. JPG/PNG için world file (.jgw, .pgw, .tfw, .wld) ve varsa .prj dosyasını ekleyin ya da sınırları elle girin. Konum bilgisi yoksa sonuçlar piksel cinsinden gösterilir.</p>
+                                <div class="upload-grid">
+                                    <div class="upload-box">
+                                        <label>T1 world file / .prj:</label>
+                                        <input type="file" id="input-world-t1" multiple accept=".jgw,.jpgw,.tfw,.tifw,.pgw,.pngw,.wld,.prj" class="file-input">
+                                    </div>
+                                    <div class="upload-box">
+                                        <label>T2 world file / .prj:</label>
+                                        <input type="file" id="input-world-t2" multiple accept=".jgw,.jpgw,.tfw,.tifw,.pgw,.pngw,.wld,.prj" class="file-input">
+                                    </div>
+                                </div>
+                                <div class="georef-manual-grid">
+                                    <label>Çözünürlük (m/piksel)<input type="number" id="input-georef-gsd" class="form-control" step="0.01" min="0.01" max="100" placeholder="örn. 0.5"></label>
+                                    <label>EPSG kodu<input type="number" id="input-georef-epsg" class="form-control" placeholder="örn. 5254"></label>
+                                    <label>Güney (enlem)<input type="number" id="input-georef-south" class="form-control" step="any"></label>
+                                    <label>Batı (boylam)<input type="number" id="input-georef-west" class="form-control" step="any"></label>
+                                    <label>Kuzey (enlem)<input type="number" id="input-georef-north" class="form-control" step="any"></label>
+                                    <label>Doğu (boylam)<input type="number" id="input-georef-east" class="form-control" step="any"></label>
+                                </div>
+                            </details>
+
+                            <div class="analysis-mode-group" role="radiogroup" aria-label="Analiz modu">
+                                <label class="analysis-mode-option">
+                                    <input type="radio" name="analysis-mode" value="fast" checked>
+                                    <span><strong>Hızlı</strong> — çözünürlük yarıya indirilir (0.5×); 8192 px görüntüde ~3.5 dk</span>
+                                </label>
+                                <label class="analysis-mode-option">
+                                    <input type="radio" name="analysis-mode" value="deep">
+                                    <span><strong>Derin analiz</strong> — orijinal çözünürlük, en doğru sonuç; 8192 px görüntüde ~12 dk</span>
+                                </label>
                             </div>
                         </div>
 
@@ -371,6 +405,7 @@
                                 <option value="levir3">LEVIR-CD #3: Yoğun Yapılaşma ve Çatı Eklentileri</option>
                                 <option value="dsifn1">DSIFN #1: Sanayi ve Ticari Tesis İnşaatı (0.6m GSD)</option>
                                 <option value="dsifn2">DSIFN #2: Metropol Kentsel Altyapı Blokları</option>
+                                <option value="yerel_basaksehir">Yerel örnek: Başakşehir 2020 → 2026 (georeferanssız)</option>
                             </select>
                         </div>
 
@@ -632,6 +667,16 @@
             </div>
             <div class="atlas-modal-body">
                 <div class="discover-grid">
+                    <div class="discover-card" data-local-sample="yerel_basaksehir">
+                        <div class="discover-badge">Yerel Veri</div>
+                        <h4>🇹🇷 Başakşehir Ortofoto (Örnek Veri)</h4>
+                        <p>sampla_data klasöründeki 2020 ve 2026 görüntüleri: georeferanssız, piksel bazında yapay zeka analizi (hızlı mod).</p>
+                        <div class="discover-footer">
+                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2020 → 2026</span>
+                            <button class="btn btn-primary btn-sm btn-local-sample">Analizi Başlat</button>
+                        </div>
+                    </div>
+
                     <div class="discover-card" data-hotspot="istanbul_basaksehir">
                         <div class="discover-badge">İstanbul</div>
                         <h4>🇹🇷 Başakşehir & Kayaşehir</h4>
