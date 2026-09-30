@@ -27,12 +27,21 @@ def test_analysis_scale_rules():
     assert analysis_scale(8192, 4468, None, "fast") == 0.5
     assert analysis_scale(1500, 1500, None, "fast") == 1.0
     assert analysis_scale(8192, 4468, 0.3, "fast") == 0.5
-    assert analysis_scale(8192, 4468, 0.6, "fast") == pytest.approx(1.2)
+    assert analysis_scale(8192, 4468, 0.6, "fast") == 0.5
     assert analysis_scale(8192, 4468, 0.5, "fast") == 0.5
     assert analysis_scale(256, 256, 0.5, "fast") == 1.0
     assert analysis_scale(8192, 4468, 0.45, "deep") == 1.0
     assert analysis_scale(512, 512, 0.9, "deep") == pytest.approx(1.8)
     assert analysis_scale(512, 512, 1.5, "fast") == 2.0
+
+
+def test_fast_mode_halves_imagery_slightly_coarser_than_half_a_metre():
+    # a world file measured 0.531 m/px on the user's mosaic: "Hızlı" must still halve it,
+    # and neither mode may upsample it (only clearly coarse imagery such as Wayback is upsampled)
+    assert analysis_scale(8192, 4468, 0.531, "fast") == 0.5
+    assert analysis_scale(8192, 4468, 0.531, "deep") == 1.0
+    assert analysis_scale(307, 307, 0.6, "deep") == 1.0
+    assert analysis_scale(8192, 4468, 1.5, "fast") == 1.0  # already coarse: never halved
 
 
 def test_detect_without_georef_stays_in_pixels():

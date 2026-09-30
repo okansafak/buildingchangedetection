@@ -22,20 +22,24 @@ Image.MAX_IMAGE_PIXELS = 250_000_000  # 8192 x 4468 aerial mosaics are legitimat
 
 ASSUMED_GSD = 0.5            # m/px, only to size pixel thresholds when the GSD is unknown; never reported
 MODEL_GSD = 0.5              # the segmenter works best near this resolution
+UPSAMPLE_MIN_GSD = 0.75      # only clearly coarse imagery (e.g. Wayback zoom 17, ~0.9 m) is upsampled toward MODEL_GSD
 PARALLAX_TOLERANCE_M = 8.0   # a roof may move this far between dates and still be the same building
 FAST_MIN_SIDE = 2048         # "Hızlı" halves only images larger than this ...
-FAST_MAX_GSD = 1.0           # ... and only while the halved GSD stays at or below this
+FAST_MAX_GSD = 1.2           # ... and only while the halved GSD stays at or below this (2 m/px was unusable)
 ORDER = {"new": 0, "demolished": 1, "existing": 2}
 
 
 def analysis_scale(w, h, gsd, mode):
-    """Resize factor for the pair. Coarse imagery (GSD > 0.5 m, e.g. Wayback zoom 17) is
-    upsampled up to 2x in both modes; "fast" halves detailed imagery; "deep" keeps it native."""
-    if gsd is not None and gsd > MODEL_GSD:
+    """Resize factor for the pair. "fast" halves large images unless that would make them too
+    coarse, and never enlarges a large image; otherwise clearly coarse imagery (e.g. Wayback
+    zoom 17) is upsampled up to 2x toward MODEL_GSD, and everything else stays native."""
+    coarse = gsd is not None and gsd >= UPSAMPLE_MIN_GSD
+    if mode == "fast" and max(w, h) > FAST_MIN_SIDE:
+        too_coarse_to_halve = coarse or (gsd is not None and gsd * 2 > FAST_MAX_GSD)
+        return 1.0 if too_coarse_to_halve else 0.5
+    if coarse:
         return min(2.0, gsd / MODEL_GSD)
-    if mode != "fast" or max(w, h) <= FAST_MIN_SIDE:
-        return 1.0
-    return 0.5 if gsd is None or gsd * 2 <= FAST_MAX_GSD else 1.0
+    return 1.0
 
 
 def load_rgb(image):
