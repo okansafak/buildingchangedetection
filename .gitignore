@@ -9,3 +9,7 @@ static/uploads/
 
 # Large local sample imagery (not versioned)
 sampla_data/
+
+# ML model cache and per-run detection outputs
+models/
+static/results/

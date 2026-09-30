@@ -1,0 +1,10 @@
+flask
+flask-cors
+opencv-python-headless
+numpy
+pillow
+onnxruntime
+huggingface_hub
+pyproj
+tifffile
+pytest
