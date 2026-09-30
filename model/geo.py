@@ -49,6 +49,15 @@ def latlon_to_tile(lat, lon, zoom):
     return x, y
 
 
+def centred_grid_origin(lat, lon, zoom, grid_size):
+    """Top-left tile of a grid_size x grid_size grid whose centre is the tile edge nearest lat/lon,
+    so the point lies within half a tile of the patch centre."""
+    n = 2.0 ** zoom
+    xf = (lon + 180.0) / 360.0 * n
+    yf = (1.0 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2.0 * n
+    return math.floor(xf - grid_size / 2 + 0.5), math.floor(yf - grid_size / 2 + 0.5)
+
+
 def tile_to_lon(x, zoom):
     """Longitude of the west edge of tile column x."""
     n = 2.0 ** zoom

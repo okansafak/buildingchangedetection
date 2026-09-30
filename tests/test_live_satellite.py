@@ -47,10 +47,12 @@ def fake_net(monkeypatch):
 
 
 def expected_bounds(lat, lon, zoom, grid):
-    """Tile-edge bounds of a grid starting at the tile containing lat/lon, computed independently."""
+    """Tile-edge bounds of a grid centred on lat/lon (the tile edge nearest the point), computed independently."""
     n = 2.0 ** zoom
-    x = int((lon + 180.0) / 360.0 * n)
-    y = int((1.0 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2.0 * n)
+    xf = (lon + 180.0) / 360.0 * n
+    yf = (1.0 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2.0 * n
+    x = math.floor(xf - grid / 2 + 0.5)
+    y = math.floor(yf - grid / 2 + 0.5)
 
     def lon_of(tx):
         return tx / n * 360.0 - 180.0
@@ -75,6 +77,18 @@ def test_fetch_patch_stitches_grid_and_returns_tile_bounds(tmp_path, fake_net):
     assert south < LAT <= north
     assert west <= LON < east
     assert gsd == pytest.approx(156543.03392 * math.cos(math.radians(LAT)) / 2 ** ZOOM, rel=1e-12)
+
+
+@pytest.mark.parametrize("lat,lon", [(LAT, LON), (40.9902, 29.0520), (39.8145, 32.7150), (30.2220, -97.6180)])
+@pytest.mark.parametrize("grid", [2, 3])
+def test_fetch_patch_centres_the_point(tmp_path, fake_net, lat, lon, grid):
+    """The hotspot must sit in the middle of the patch, not near its top-left corner."""
+    _, bounds, _ = LiveSatelliteFetcher(cache_dir=str(tmp_path)).fetch_patch(lat, lon, ZOOM, grid_size=grid)
+    south, west, north, east = bounds
+    fx = (lon - west) / (east - west)
+    fy = (north - lat) / (north - south)
+    half_tile = 0.5 / grid
+    assert abs(fx - 0.5) <= half_tile + 1e-9 and abs(fy - 0.5) <= half_tile + 1e-9
 
 
 def test_fetch_patch_reuses_cached_tiles(tmp_path, fake_net):

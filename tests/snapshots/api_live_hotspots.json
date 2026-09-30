@@ -40,21 +40,21 @@
   "zoom": 17
  },
  {
-  "desc": "Boş kırsal vadi arazisinde dünyanın en büyük otomotiv üretim tesislerinden biri ve etrafındaki yeni yerleşimler.",
-  "id": "austin_giga",
-  "lat": 30.222,
-  "lon": -97.618,
-  "title": "Austin, Teksas - Giga Texas & Kentsel Yayılma",
+  "desc": "Austin'in kuzey banliyösünde boş parsellerin tek katlı müstakil konut sokaklarıyla dolması.",
+  "id": "austin_pflugerville",
+  "lat": 30.475,
+  "lon": -97.625,
+  "title": "Austin, Teksas - Pflugerville Yeni Konut Siteleri",
   "year_t1": "2014",
   "year_t2": "2026",
   "zoom": 17
  },
  {
-  "desc": "Çöl kumlarından devasa fuar alanları, lojistik merkezler ve modern binalar topluluğuna dönüşüm.",
-  "id": "dubai_south",
-  "lat": 24.965,
-  "lon": 55.155,
-  "title": "Dubai - South & EXPO City Kentsel Gelişimi",
+  "desc": "2014'te boş çöl olan alanda yüzlerce villadan oluşan planlı bir yerleşimin kurulması.",
+  "id": "dubai_hills",
+  "lat": 25.103,
+  "lon": 55.248,
+  "title": "Dubai - Dubai Hills Estate (Çölden Villa Kentine)",
   "year_t1": "2014",
   "year_t2": "2026",
   "zoom": 17

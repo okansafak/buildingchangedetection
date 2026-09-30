@@ -58,25 +58,25 @@ LIVE_HOTSPOTS = {
         "year_t2": "2026",
         "desc": "Liman arkasındaki eski sanayi parsellerinin yıkılıp yerine gökdelenlerin ve plazaların inşa edilmesi."
     },
-    "austin_giga": {
-        "id": "austin_giga",
-        "title": "Austin, Teksas - Giga Texas & Kentsel Yayılma",
-        "lat": 30.2220,
-        "lon": -97.6180,
+    "austin_pflugerville": {
+        "id": "austin_pflugerville",
+        "title": "Austin, Teksas - Pflugerville Yeni Konut Siteleri",
+        "lat": 30.4750,
+        "lon": -97.6250,
         "zoom": 17,
         "year_t1": "2014",
         "year_t2": "2026",
-        "desc": "Boş kırsal vadi arazisinde dünyanın en büyük otomotiv üretim tesislerinden biri ve etrafındaki yeni yerleşimler."
+        "desc": "Austin'in kuzey banliyösünde boş parsellerin tek katlı müstakil konut sokaklarıyla dolması."
     },
-    "dubai_south": {
-        "id": "dubai_south",
-        "title": "Dubai - South & EXPO City Kentsel Gelişimi",
-        "lat": 24.9650,
-        "lon": 55.1550,
+    "dubai_hills": {
+        "id": "dubai_hills",
+        "title": "Dubai - Dubai Hills Estate (Çölden Villa Kentine)",
+        "lat": 25.1030,
+        "lon": 55.2480,
         "zoom": 17,
         "year_t1": "2014",
         "year_t2": "2026",
-        "desc": "Çöl kumlarından devasa fuar alanları, lojistik merkezler ve modern binalar topluluğuna dönüşüm."
+        "desc": "2014'te boş çöl olan alanda yüzlerce villadan oluşan planlı bir yerleşimin kurulması."
     }
 }
 
@@ -89,15 +89,13 @@ class LiveSatelliteFetcher:
         self.cache_dir = cache_dir
         os.makedirs(self.cache_dir, exist_ok=True)
 
-    def _get_tile_coords(self, lat, lon, zoom):
-        return geo.latlon_to_tile(lat, lon, zoom)
-
     def fetch_patch(self, lat, lon, zoom=17, release_id='26334', grid_size=2):
         """
         Fetches and stitches a grid_size x grid_size tile patch around lat/lon.
         Default 2x2 grid yields a 512x512 pixel patch with precise WGS84 coordinates.
         """
-        center_x, center_y = self._get_tile_coords(lat, lon, zoom)
+        # Top-left tile of a grid centred on the point, so the hotspot is in the middle of the patch
+        center_x, center_y = geo.centred_grid_origin(lat, lon, zoom, grid_size)
 
         # Grid tiles
         patch_w = grid_size * 256
@@ -137,8 +135,7 @@ class LiveSatelliteFetcher:
                             
                 stitched.paste(tile_img, (col * 256, row * 256))
                 
-        # Bounding box (South, West, North, East) of the stitched grid. The grid starts
-        # at the tile containing lat/lon and extends right/down, so the point is not centred.
+        # Bounding box (South, West, North, East) of the stitched grid
         bounds = [
             geo.tile_to_lat(center_y + grid_size, zoom),
             geo.tile_to_lon(center_x, zoom),
