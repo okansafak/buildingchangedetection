@@ -1390,7 +1390,7 @@
  ],
  "overlays": {
   "heatmap_png_base64": "18c3a6cfe2039304e22e696dc5d476dedaf418fca96f082160dcfa6e1aaf5b7d",
-  "mask_png_base64": "6ebc8621da3e2ec0fb8ca717cee4c4f4234f3ee5e662d9418d8a8bb7c9b4301d",
+  "mask_png_base64": "2c14d02ea46cabfc9b4dab9b823f86cfd3ca3b125286df61fd1012a62d37212e",
   "t1_png_base64": "6c7f94e56377885ae4d26cc442f2b6bb9f502ad957c90e59d40f05906317f438",
   "t2_png_base64": "dd7cf2d13b4f94f6284b58821b1a8818e45108b63e5fd55206a68be4bab387d0"
  },

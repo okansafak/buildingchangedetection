@@ -348,7 +348,8 @@ class BuildingChangeDetector:
         heatmap_rgba[:, :, 3] = (diff_map * 190).astype(np.uint8)
 
         return {
-            "mask_png_base64": self._mat_to_base64(overlay_rgba),
+            # OpenCV encodes BGR(A): convert, or "demolished" red is written as blue
+            "mask_png_base64": self._mat_to_base64(cv2.cvtColor(overlay_rgba, cv2.COLOR_RGBA2BGRA)),
             "heatmap_png_base64": self._mat_to_base64(heatmap_rgba),
             "t1_png_base64": self._mat_to_base64(cv2.cvtColor(img1_rgb, cv2.COLOR_RGB2BGR)),
             "t2_png_base64": self._mat_to_base64(cv2.cvtColor(img2_rgb, cv2.COLOR_RGB2BGR))

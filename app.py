@@ -222,19 +222,26 @@ def export_csv():
     features = LAST_RESULTS['latest']['geojson'].get('features', [])
     si = StringIO()
     writer = csv.writer(si)
-    writer.writerow(["Bina_ID", "Degisim_Turu", "Degisim_Tanimi", "Alan_m2", "Cevre_m", "Guven_Skoru_Yuzde", "Enlem", "Boylam"])
-    
+    writer.writerow(["Bina_ID", "Degisim_Turu", "Degisim_Tanimi", "Alan_m2", "Cevre_m", "Guven_Skoru_Yuzde", "Enlem", "Boylam", "Piksel_X", "Piksel_Y"])
+
+    def cell(value):
+        return '' if value is None else value
+
     for f in features:
         props = f.get('properties', {})
+        centroid = props.get('centroid') or ['', '']  # None when the image is not georeferenced
+        centroid_px = props.get('centroid_px') or ['', '']
         writer.writerow([
-            props.get('feature_id', ''),
-            props.get('change_type', ''),
-            props.get('type_tr', ''),
-            props.get('area_m2', ''),
-            props.get('perimeter_m', ''),
-            props.get('confidence_pct', ''),
-            props.get('centroid', [0, 0])[0],
-            props.get('centroid', [0, 0])[1]
+            cell(props.get('id')),
+            cell(props.get('type')),
+            cell(props.get('type_tr')),
+            cell(props.get('area_m2')),
+            cell(props.get('perimeter_m')),
+            cell(props.get('confidence_pct')),
+            centroid[0],
+            centroid[1],
+            centroid_px[0],
+            centroid_px[1],
         ])
         
     return Response(

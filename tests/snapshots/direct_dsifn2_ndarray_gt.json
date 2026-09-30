@@ -963,7 +963,7 @@
  ],
  "overlays": {
   "heatmap_png_base64": "36ff2329f4422070525a2697e0766afa1c1580ab2cf4c010a02e290b45cc2802",
-  "mask_png_base64": "006ed4be4fbd7fe49395043a356b943fdf1ff26e31e881630b33b0f6dc739cad",
+  "mask_png_base64": "6457976dc92008b201cd2b2b6288f5b6e7510e8547d94ae5e66007488ec8ed5f",
   "t1_png_base64": "f0f000377c7fb75a2029aec3865f7689b27d443172bdc235fec6e2483eaf7cd4",
   "t2_png_base64": "c1c24e5ebd1e55c1d764ef46f744effee7b0abc6d1766f4cef6c4bfe9e3a0712"
  },

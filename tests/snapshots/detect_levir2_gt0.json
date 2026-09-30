@@ -181,7 +181,7 @@
  ],
  "overlays": {
   "heatmap_png_base64": "bf6f9136c721a0d46c90ecf4099fcbaa3c3ed24aea46ec62da222e14e4486a6b",
-  "mask_png_base64": "a250e0c458e3e97369023221f75abedb43b60884c5f25b80632d847e62c83f97",
+  "mask_png_base64": "c6d0b5ac917378ca4bb3c4fab8b0962b158312cdcad6eb6d57cf6019b5a052bf",
   "t1_png_base64": "600ee78694d04d41cca87754afe6a884874a3a0a5e9d97d6e7a9d3af4d4cd10c",
   "t2_png_base64": "9446244bd78075d281c8a664625477a7403c084f8f77c1e93bf426382da0aa60"
  },
