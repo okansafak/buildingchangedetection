@@ -1,0 +1,155 @@
+{
+ "bounds": [
+  30.592110097017606,
+  114.30469853835612,
+  30.593489902982395,
+  114.30630146164387
+ ],
+ "buildings": [
+  {
+   "area_m2": 40.5,
+   "centroid": [
+    30.59328,
+    114.306068
+   ],
+   "centroid_px": [
+    218.7,
+    38.9
+   ],
+   "color": "#64748b",
+   "confidence_pct": 95.0,
+   "icon": "⚪",
+   "id": 1,
+   "perimeter_m": 46.5,
+   "px_coords": [
+    [
+     212,
+     51
+    ],
+    [
+     209,
+     29
+    ],
+    [
+     226,
+     27
+    ],
+    [
+     228,
+     49
+    ],
+    [
+     212,
+     51
+    ]
+   ],
+   "type": "existing",
+   "type_tr": "Mevcut / Korunan Bina"
+  }
+ ],
+ "center": [
+  30.5928,
+  114.3055
+ ],
+ "geojson": {
+  "features": [
+   {
+    "geometry": {
+     "coordinates": [
+      [
+       [
+        114.306026,
+        30.593215
+       ],
+       [
+        114.306007,
+        30.593334
+       ],
+       [
+        114.306114,
+        30.593344
+       ],
+       [
+        114.306126,
+        30.593226
+       ],
+       [
+        114.306026,
+        30.593215
+       ]
+      ]
+     ],
+     "type": "Polygon"
+    },
+    "id": 1,
+    "properties": {
+     "area_m2": 40.5,
+     "centroid": [
+      30.59328,
+      114.306068
+     ],
+     "centroid_px": [
+      218.7,
+      38.9
+     ],
+     "color": "#64748b",
+     "confidence_pct": 95.0,
+     "icon": "⚪",
+     "id": 1,
+     "perimeter_m": 46.5,
+     "px_coords": [
+      [
+       212,
+       51
+      ],
+      [
+       209,
+       29
+      ],
+      [
+       226,
+       27
+      ],
+      [
+       228,
+       49
+      ],
+      [
+       212,
+       51
+      ]
+     ],
+     "type": "existing",
+     "type_tr": "Mevcut / Korunan Bina"
+    },
+    "type": "Feature"
+   }
+  ],
+  "type": "FeatureCollection"
+ },
+ "image_size": [
+  256,
+  256
+ ],
+ "overlays": {
+  "heatmap_png_base64": "6ddc49d4ac34fd50771c974a3fbfe04de5945f9d48326f3ef89e777749b348db",
+  "mask_png_base64": "87e80b372ee1ce5b4385cebee15fd3422f783431191b40041e26e22321c4879f",
+  "t1_png_base64": "f23f2929d5712971b5b9bee512f65367bba21ff5d256ed16d8ce077c0c6869ad",
+  "t2_png_base64": "d678e7fe54711d8a7de373e3f5d37840b5e8784e353667c290e519536e1b0da0"
+ },
+ "scenario_id": "dsifn1",
+ "stats": {
+  "demolished_count": 0,
+  "demolished_m2": 0.0,
+  "existing_count": 1,
+  "existing_m2": 40.5,
+  "gsd": 0.6,
+  "new_buildings_count": 0,
+  "new_buildings_m2": 0.0,
+  "patch_dimensions": "256x256 px (153m x 153m)",
+  "total_buildings": 1,
+  "total_changed_hectares": 0.0,
+  "total_changed_m2": 0.0
+ },
+ "success": true
+}

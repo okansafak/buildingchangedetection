@@ -1,0 +1,62 @@
+[
+ {
+  "desc": "Son 12 yılda boş tarım ve otlak arazilerinden devasa toplu konut bloklarına ve şehir hastanesine dönüşüm.",
+  "id": "istanbul_basaksehir",
+  "lat": 41.107,
+  "lon": 28.79,
+  "title": "İstanbul - Başakşehir & Kayaşehir (Kentsel Büyüme)",
+  "year_t1": "2014",
+  "year_t2": "2026",
+  "zoom": 17
+ },
+ {
+  "desc": "Eski gecekondu ve alçak katlı binaların tamamen yıkılarak yüksek katlı modern rezidans kulelerine dönüşümü.",
+  "id": "istanbul_fikirtepe",
+  "lat": 40.9902,
+  "lon": 29.052,
+  "title": "İstanbul - Fikirtepe (Kentsel Dönüşüm & Gökdelenler)",
+  "year_t1": "2014",
+  "year_t2": "2026",
+  "zoom": 17
+ },
+ {
+  "desc": "Başkentin güneybatı gelişim koridorunda hızla artan villa siteleri, okullar ve rezidanslar.",
+  "id": "ankara_incek",
+  "lat": 39.8145,
+  "lon": 32.715,
+  "title": "Ankara - İncek & Çayyolu (Yeni Konut Alanları)",
+  "year_t1": "2014",
+  "year_t2": "2026",
+  "zoom": 17
+ },
+ {
+  "desc": "Liman arkasındaki eski sanayi parsellerinin yıkılıp yerine gökdelenlerin ve plazaların inşa edilmesi.",
+  "id": "izmir_bayrakli",
+  "lat": 38.455,
+  "lon": 27.175,
+  "title": "İzmir - Bayraklı & Yeni Kent Merkezi",
+  "year_t1": "2014",
+  "year_t2": "2026",
+  "zoom": 17
+ },
+ {
+  "desc": "Boş kırsal vadi arazisinde dünyanın en büyük otomotiv üretim tesislerinden biri ve etrafındaki yeni yerleşimler.",
+  "id": "austin_giga",
+  "lat": 30.222,
+  "lon": -97.618,
+  "title": "Austin, Teksas - Giga Texas & Kentsel Yayılma",
+  "year_t1": "2014",
+  "year_t2": "2026",
+  "zoom": 17
+ },
+ {
+  "desc": "Çöl kumlarından devasa fuar alanları, lojistik merkezler ve modern binalar topluluğuna dönüşüm.",
+  "id": "dubai_south",
+  "lat": 24.965,
+  "lon": 55.155,
+  "title": "Dubai - South & EXPO City Kentsel Gelişimi",
+  "year_t1": "2014",
+  "year_t2": "2026",
+  "zoom": 17
+ }
+]

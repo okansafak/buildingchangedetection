@@ -1,0 +1,77 @@
+[
+ {
+  "center": [
+   30.275,
+   -97.74
+  ],
+  "dataset": "LEVIR-CD Benchmark",
+  "description": "Boş arazide yeni inşa edilen müstakil yerleşim birimleri ve kentsel yayılma.",
+  "gsd": 0.5,
+  "id": "levir1",
+  "resolution": "0.5m / piksel",
+  "thumb_A": "/static/samples/levir1/A.png",
+  "thumb_B": "/static/samples/levir1/B.png",
+  "title": "LEVIR-CD #1: Yeni Kentsel Konut Gelişimi (Teksas, ABD)",
+  "zoom": 17
+ },
+ {
+  "center": [
+   32.7767,
+   -96.797
+  ],
+  "dataset": "LEVIR-CD Benchmark",
+  "description": "Yeni parselasyon ve hızla inşa edilen konut blokları.",
+  "gsd": 0.5,
+  "id": "levir2",
+  "resolution": "0.5m / piksel",
+  "thumb_A": "/static/samples/levir2/A.png",
+  "thumb_B": "/static/samples/levir2/B.png",
+  "title": "LEVIR-CD #2: Banliyö Büyümesi ve Yeni Konutlar",
+  "zoom": 17
+ },
+ {
+  "center": [
+   29.7604,
+   -95.3698
+  ],
+  "dataset": "LEVIR-CD Benchmark",
+  "description": "Gelişmekte olan yerleşim alanında yeni çatı ve bina eklentileri.",
+  "gsd": 0.5,
+  "id": "levir3",
+  "resolution": "0.5m / piksel",
+  "thumb_A": "/static/samples/levir3/A.png",
+  "thumb_B": "/static/samples/levir3/B.png",
+  "title": "LEVIR-CD #3: Yoğun Yapılaşma ve Çatı Değişimleri",
+  "zoom": 17
+ },
+ {
+  "center": [
+   30.5928,
+   114.3055
+  ],
+  "dataset": "DSIFN Benchmark",
+  "description": "Geniş ölçekli fabrika ve depo binalarının kurulumu.",
+  "gsd": 0.6,
+  "id": "dsifn1",
+  "resolution": "0.6m / piksel",
+  "thumb_A": "/static/samples/dsifn1/A.png",
+  "thumb_B": "/static/samples/dsifn1/B.png",
+  "title": "DSIFN #1: Sanayi ve Ticari Tesis İnşaatı (Asya Metropolü)",
+  "zoom": 17
+ },
+ {
+  "center": [
+   39.9042,
+   116.4074
+  ],
+  "dataset": "DSIFN Benchmark",
+  "description": "Yüksek katlı kentsel genişleme ve yeni blok inşaatı.",
+  "gsd": 0.6,
+  "id": "dsifn2",
+  "resolution": "0.6m / piksel",
+  "thumb_A": "/static/samples/dsifn2/A.png",
+  "thumb_B": "/static/samples/dsifn2/B.png",
+  "title": "DSIFN #2: Kentsel Altyapı ve Konut Blokları",
+  "zoom": 17
+ }
+]

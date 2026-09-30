@@ -8,16 +8,18 @@ GeoChange AI ("Atlas GeoChange" in the UI) is a Flask prototype that detects bui
 
 ## Commands
 
-No build step, linter config, test suite, or requirements file. Dependencies (Python 3.10+): `flask`, `flask-cors`, `opencv-python-headless`, `numpy`, `pillow` (`torch`/`torchvision` are imported but unused).
+No build step, linter config, or requirements file. Tests need `pip install pytest`. Dependencies (Python 3.10+): `flask`, `flask-cors`, `opencv-python-headless`, `numpy`, `pillow` (`torch`/`torchvision` are imported but unused).
 
 ```bash
 python app.py                 # serves http://127.0.0.1:5000 (debug=False, binds 0.0.0.0)
+python -m pytest                   # offline test suite; pytest.ini limits collection to tests/
+python -m pytest tests/test_projects_api.py::test_project_roundtrip -v   # single test
 python download_samples.py    # fetch LEVIR-CD / DSIFN sample pairs into static/samples/<id>/{A,B,label}.png
 python test_fetch.py          # smoke test: fetch a live Wayback bitemporal pair for Istanbul
 python parse_wayback.py       # rebuild wayback_releases.json from Esri's WMTS capabilities
 ```
 
-`test_*.py` files are ad-hoc scripts (no pytest). Run everything from the repo root: `LiveSatelliteFetcher` (`static/live_cache`) and `ProjectManager` (`data/`) use cwd-relative paths, while `app.py` resolves samples/uploads via `app.root_path`.
+Root-level `test_fetch.py` / `test_wayback.py` are ad-hoc network scripts, not pytest tests. `tests/snapshots/` pins the exact API output. If a snapshot test fails after a change, the change altered behavior: fix the code, and regenerate with `python -m pytest --update-snapshots` only for an intentional behavior change. Run everything from the repo root: `LiveSatelliteFetcher` (`static/live_cache`) and `ProjectManager` (`data/`) use cwd-relative paths, while `app.py` resolves samples/uploads via `app.root_path`.
 
 ## Architecture
 

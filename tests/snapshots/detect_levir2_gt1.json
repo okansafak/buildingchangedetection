@@ -1,0 +1,167 @@
+{
+ "bounds": [
+  32.776125080848004,
+  -96.79768378706021,
+  32.77727491915199,
+  -96.79631621293979
+ ],
+ "buildings": [
+  {
+   "area_m2": 3332.5,
+   "centroid": [
+    32.776885,
+    -96.796742
+   ],
+   "centroid_px": [
+    176.3,
+    86.8
+   ],
+   "color": "#ef4444",
+   "confidence_pct": 90.2,
+   "icon": "🔴",
+   "id": 1,
+   "perimeter_m": 262.1,
+   "px_coords": [
+    [
+     255,
+     0
+    ],
+    [
+     222,
+     0
+    ],
+    [
+     80,
+     134
+    ],
+    [
+     126,
+     174
+    ],
+    [
+     255,
+     68
+    ],
+    [
+     255,
+     0
+    ]
+   ],
+   "type": "demolished",
+   "type_tr": "Yıkılan / Kaldırılan Bina"
+  }
+ ],
+ "center": [
+  32.7767,
+  -96.797
+ ],
+ "geojson": {
+  "features": [
+   {
+    "geometry": {
+     "coordinates": [
+      [
+       [
+        -96.796322,
+        32.777275
+       ],
+       [
+        -96.796498,
+        32.777275
+       ],
+       [
+        -96.797256,
+        32.776673
+       ],
+       [
+        -96.797011,
+        32.776493
+       ],
+       [
+        -96.796322,
+        32.776969
+       ],
+       [
+        -96.796322,
+        32.777275
+       ]
+      ]
+     ],
+     "type": "Polygon"
+    },
+    "id": 1,
+    "properties": {
+     "area_m2": 3332.5,
+     "centroid": [
+      32.776885,
+      -96.796742
+     ],
+     "centroid_px": [
+      176.3,
+      86.8
+     ],
+     "color": "#ef4444",
+     "confidence_pct": 90.2,
+     "icon": "🔴",
+     "id": 1,
+     "perimeter_m": 262.1,
+     "px_coords": [
+      [
+       255,
+       0
+      ],
+      [
+       222,
+       0
+      ],
+      [
+       80,
+       134
+      ],
+      [
+       126,
+       174
+      ],
+      [
+       255,
+       68
+      ],
+      [
+       255,
+       0
+      ]
+     ],
+     "type": "demolished",
+     "type_tr": "Yıkılan / Kaldırılan Bina"
+    },
+    "type": "Feature"
+   }
+  ],
+  "type": "FeatureCollection"
+ },
+ "image_size": [
+  256,
+  256
+ ],
+ "overlays": {
+  "heatmap_png_base64": "3420175542fe6bfa19a4359a3a3c426e965a93df09784bcb20bd0f418961a5a6",
+  "mask_png_base64": "8873f9b285417bcfb454e3a1de90f7fb978a466b94fd3bc2ec69462ad6e64e0b",
+  "t1_png_base64": "600ee78694d04d41cca87754afe6a884874a3a0a5e9d97d6e7a9d3af4d4cd10c",
+  "t2_png_base64": "9446244bd78075d281c8a664625477a7403c084f8f77c1e93bf426382da0aa60"
+ },
+ "scenario_id": "levir2",
+ "stats": {
+  "demolished_count": 1,
+  "demolished_m2": 3332.5,
+  "existing_count": 0,
+  "existing_m2": 0.0,
+  "gsd": 0.5,
+  "new_buildings_count": 0,
+  "new_buildings_m2": 0.0,
+  "patch_dimensions": "256x256 px (128m x 128m)",
+  "total_buildings": 1,
+  "total_changed_hectares": 0.333,
+  "total_changed_m2": 3332.5
+ },
+ "success": true
+}
