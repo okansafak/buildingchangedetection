@@ -4,6 +4,7 @@ import os
 import urllib.parse
 import urllib.request
 from PIL import Image
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 
 import numpy as np
@@ -103,7 +104,7 @@ def placeholder_tile_mask(image, tile=256):
     return mask
 
 
-def _get_json(url, timeout=8):
+def _get_json(url, timeout=15):  # the metadata service often needs 4-9 s per query
     req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode('utf-8'))
@@ -144,6 +145,13 @@ def capture_info(lat, lon, year):
         return None  # not cached: the service has short outages (503)
     _CAPTURE_CACHE[key] = info
     return info
+
+
+def capture_infos(lat, lon, years):
+    """capture_info for several years at once; the metadata queries run in parallel (each takes seconds)."""
+    years = list(years)
+    with ThreadPoolExecutor(max_workers=len(years) or 1) as pool:
+        return dict(zip(years, pool.map(lambda y: capture_info(lat, lon, y), years)))
 
 
 class LiveSatelliteFetcher:

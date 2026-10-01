@@ -11,7 +11,7 @@ from flask import Flask, render_template, request, jsonify, send_file, Response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from model.change_detector import BuildingChangeDetector
-from model.live_satellite import LiveSatelliteFetcher, WAYBACK_RELEASES, LIVE_HOTSPOTS, capture_info, placeholder_tile_mask
+from model.live_satellite import LiveSatelliteFetcher, WAYBACK_RELEASES, LIVE_HOTSPOTS, capture_infos, placeholder_tile_mask
 from model.project_manager import ProjectManager
 from PIL import Image
 from model.ml_detector import MLChangeDetector, load_rgb
@@ -109,6 +109,22 @@ def _grid_size(data):
     return grid
 
 
+def _captures(lat, lon, year_t1, year_t2):
+    found = capture_infos(lat, lon, {year_t1, year_t2})
+    return {"t1": found[year_t1], "t2": found[year_t2]}
+
+
+@app.route('/api/live/captures', methods=['GET'])
+def live_captures():
+    """Real acquisition date of every curated Wayback release at a location (null when unknown)."""
+    try:
+        lat = float(request.args.get('lat'))
+        lon = float(request.args.get('lon'))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "Geçerli koordinat (lat, lon) gerekli."}), 400
+    return jsonify({"success": True, "captures": capture_infos(lat, lon, WAYBACK_RELEASES)})
+
+
 @app.route('/api/live/preview', methods=['POST'])
 def live_preview():
     """T1/T2 Wayback imagery for step 2 only (tiles are cached); detection runs later via /api/live/detect."""
@@ -137,7 +153,7 @@ def live_preview():
         "gsd": gsd,
         "grid_size": grid,
         "years": {"t1": year_t1, "t2": year_t2},
-        "capture": {"t1": capture_info(lat, lon, year_t1), "t2": capture_info(lat, lon, year_t2)},
+        "capture": _captures(lat, lon, year_t1, year_t2),
         "missing_tiles": {"t1": missing_t1, "t2": missing_t2, "total": grid * grid},
     })
 
@@ -187,8 +203,7 @@ def _live_detect(params, report=None):
     result["mode"] = "live_satellite"
     result["grid_size"] = params['grid_size']
     result["years"] = {"t1": params['year_t1'], "t2": params['year_t2']}
-    result["capture"] = {"t1": capture_info(params['lat'], params['lon'], params['year_t1']),
-                         "t2": capture_info(params['lat'], params['lon'], params['year_t2'])}
+    result["capture"] = _captures(params['lat'], params['lon'], params['year_t1'], params['year_t2'])
     result["warnings"] = warnings
     LAST_RESULTS['latest'] = result
     return result

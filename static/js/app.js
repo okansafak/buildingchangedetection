@@ -685,6 +685,7 @@ function updateHotspotCard(hotspotId) {
     el.lblHotspotDesc.textContent = h.desc;
     if (h.year_t1) el.yearT1.value = h.year_t1;
     if (h.year_t2) el.yearT2.value = h.year_t2;
+    refreshYearOptions(h.lat, h.lon);
 
     // Suggest project name if new project
     if (!state.currentProjectId && el.inputStep1ProjectName) {
@@ -692,6 +693,52 @@ function updateHotspotCard(hotspotId) {
         el.inputStep1ProjectName.value = defaultName;
         el.inputTopbarProjectName.value = defaultName;
     }
+}
+
+// Relabels the year selects with the real capture date at this point ("2014 Yılı Uydusu · çekim 2011-02").
+// Wayback releases often reuse an older capture; those years are marked so the user does not compare equal imagery.
+let captureRequest = 0;
+function yearSelects() {
+    return [el.yearT1, el.yearT2, el.mapYearT1, el.mapYearT2].filter(Boolean);
+}
+
+// Back to plain labels (and drop any lookup in flight) as soon as the point changes
+function resetYearOptions() {
+    captureRequest++;
+    yearSelects().forEach(sel => Array.from(sel.options).forEach(opt => {
+        if (!opt.dataset.label) opt.dataset.label = opt.textContent;
+        opt.textContent = opt.dataset.label;
+    }));
+}
+
+async function refreshYearOptions(lat, lon) {
+    resetYearOptions();
+    const token = captureRequest;
+    const selects = yearSelects();
+    let captures;
+    try {
+        const res = await fetch(`/api/live/captures?lat=${lat}&lon=${lon}`);
+        const data = await res.json();
+        if (!data.success) return;
+        captures = data.captures;
+    } catch (err) {
+        return;  // capture dates are optional; the selects keep their plain labels
+    }
+    if (token !== captureRequest) return;  // a newer point was picked meanwhile
+    const sameAs = {};
+    Object.keys(captures).sort().forEach(year => {
+        const date = captures[year]?.date;
+        if (!date) return;
+        const earlier = Object.keys(captures).sort().find(y => y < year && captures[y]?.date === date);
+        if (earlier) sameAs[year] = earlier;
+    });
+    selects.forEach(sel => Array.from(sel.options).forEach(opt => {
+        const c = captures[opt.value];
+        if (!c || !c.date) return;
+        let note = sameAs[opt.value] ? ` (${sameAs[opt.value]} ile aynı görüntü)` : '';
+        if (c.resolution_m > 0.6) note += ` · düşük çözünürlük ${c.resolution_m} m`;
+        opt.textContent = `${opt.dataset.label} · çekim ${c.date.slice(0, 7)}${note}`;
+    }));
 }
 
 // Live Wayback patches are a grid of zoom-17 tiles centred on the point
@@ -785,6 +832,9 @@ function initSelectMap() {
             el.lblSelectedZoom.textContent = state.selectedZoom;
         }
         drawLiveArea();
+        clearTimeout(state.captureTimer);
+        resetYearOptions();
+        state.captureTimer = setTimeout(() => refreshYearOptions(state.selectedCoords[0], state.selectedCoords[1]), 600);
         if (!state.currentProjectId && el.inputStep1ProjectName && state.sourceType === 'map-click') {
             const coordName = `Uydu Analizi [${state.selectedCoords[0]}, ${state.selectedCoords[1]}]`;
             el.inputStep1ProjectName.value = coordName;

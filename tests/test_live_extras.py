@@ -121,3 +121,16 @@ def test_detect_without_any_archive_imagery_is_an_error(client, wayback_net):
     start = client.post("/api/live/detect", json={"lat": LAT, "lon": LON, "engine": "ml", "job": True})
     job = client.get(f"/api/jobs/{start.get_json()['job_id']}").get_json()
     assert job["status"] == "error" and "arşiv görüntüsü yok" in job["error"]
+
+
+def test_captures_endpoint_lists_every_release(client, wayback_net):
+    body = client.get(f"/api/live/captures?lat={LAT}&lon={LON}").get_json()
+    assert body["success"] is True
+    assert set(body["captures"]) == set(live_satellite.WAYBACK_RELEASES)
+    assert body["captures"]["2014"]["date"] == "2011-02-06" and body["captures"]["2026"]["date"] == "2025-10-15"
+    assert body["captures"]["2018"] is None  # not in the stub config: unknown, not an error
+
+
+def test_captures_endpoint_requires_coordinates(client):
+    res = client.get("/api/live/captures?lat=abc")
+    assert res.status_code == 400 and "koordinat" in res.get_json()["error"]
