@@ -1,64 +1,84 @@
-# GeoChange AI - Uydu Görüntülerinden Bina Değişim Tespiti ve Haritalandırma
+# GeoChange AI — Uydu Görüntülerinden Bina Değişim Tespiti
 
-Bu proje, [`satellite-image-deep-learning/datasets`](https://github.com/satellite-image-deep-learning/datasets) ve literatürdeki güncel Uzaktan Algılama Değişim Tespiti (Remote Sensing Change Detection) veri setlerini (özellikle **LEVIR-CD**, **WHU-CD** ve **DSIFN**) temel alarak, farklı zamanlarda çekilmiş iki zamanlı (bi-temporal $T_1$ ve $T_2$) uydu/hava fotoğraflarından **bina değişimlerini (yeni inşaat ve yıkım)** otomatik olarak tespit eden, CBS (GIS) formatında vektörize eden ve interaktif harita üzerinde gösteren uçtan uca bir prototip uygulamadır.
-
----
-
-## 🌟 Öne Çıkan Özellikler
-
-1. **İnteraktif Uydu Haritası (Leaflet.js + Esri World Imagery)**:
-   - Gerçek yüksek çözünürlüklü uydu altlığı üzerinde bitemporal katman bindirme.
-   - Zaman 1 ($T_1$), Zaman 2 ($T_2$), Yapay Zeka Değişim Maskesi ve Değişim Isı Haritası (Heatmap) arasında tek tıkla geçiş ve saydamlık ayarı.
-   - Her tespit edilen binanın sınırlarını gösteren vektörel GeoJSON poligonları ve üzerine tıklandığında açılan detay kartları (Bina ID, Taban Alanı $m^2$, Çevre, Güven Skoru, Koordinatlar).
-
-2. **Yapay Zeka & Değişim Algoritması (PyTorch SiamUnet + Yapısal Analiz)**:
-   - **Siamese CNN Mimarisi**: $T_1$ ve $T_2$ görüntülerini paylaşımlı evrişimsel katmanlardan geçirerek derin öznitelik farklarını ($\Delta F = |F_1 - F_2|$) hesaplar.
-   - **Yönlü Bina Sınıflandırması**: Çatı yansıması, kenar yoğunluğu ve spektral değişimleri inceleyerek değişimin **"Yeni Yapı"** mı yoksa **"Yıkım / Kaldırılan Bina"** mı olduğunu ayrıştırır.
-   - **Morfolojik Düzenleme**: Küçük gürültüleri filtreler, çatı boşluklarını kapatır ve poligonları basitleştirir (Douglas-Peucker).
-
-3. **Hazır Bölgeler, Harita Seçimi & Özel Yükleme**:
-   - **Hazır bölgeler**: Austin Pflugerville ve Dubai Hills Estate (Esri Wayback 2014 → 2026).
-   - **Haritadan seçim**: Haritada tıklanan noktanın çevresinde, kenar uzunluğu metre olarak girilen alan (1–8 karo).
-   - **Özel Yükleme**: Kendi $T_1$/$T_2$ görüntüleriniz; GeoTIFF, world file veya elle girilen konumla georeferanslı ya da georeferanssız.
-
-4. **Metrikler & CBS Dışa Aktarma (Export)**:
-   - Toplam Değişen Alan ($m^2$ ve Hektar), Yeni Bina Sayısı, Yıkılan Bina Sayısı.
-   - Yer Gerçeği (Ground Truth) mevcutsa anlık **Precision, Recall, F1 Skoru ve IoU** doğrulaması.
-   - Sonuçları tek tıkla **GeoJSON** (QGIS, ArcGIS, Google Earth uyumlu) ve **CSV Raporu** olarak indirme.
+İki farklı tarihte çekilmiş uydu veya hava görüntüsünü ($T_1$, $T_2$) karşılaştırıp binaları **yeni**, **yıkılan**, **yeniden yapılan** ve **mevcut** olarak sınıflandıran, sonuçları GeoJSON/CSV olarak dışa aktaran bir Flask prototipidir. Arayüz Türkçedir ("Atlas GeoChange").
 
 ---
 
-## 🚀 Hızlı Başlangıç
+## Ne yapar?
 
-### Gereksinimler
-- Python 3.10+
-- `flask`, `torch`, `torchvision`, `opencv-python-headless`, `numpy`, `pillow` (Zaten ortamda kurulu)
+- **Görüntü kaynakları**
+  - **Hazır bölgeler:** İstanbul Fikirtepe, Ankara Mamak Gülseren, İzmir Örnekköy (kentsel dönüşüm), Austin Pflugerville, Dubai Hills Estate. Esri World Imagery Wayback arşivinden 2014 → 2026.
+  - **Haritadan seçim:** Haritada tıklanan noktanın çevresinde, kenar uzunluğu metre olarak girilen alan (1×1 – 8×8 karo, yaklaşık 0.2–1.8 km). İndirilecek karo ızgarası haritada çizilir.
+  - **Kendi görüntüleriniz:** JPG/PNG/TIFF. Georeferans GeoTIFF etiketlerinden, world file'dan (.jgw/.pgw/.tfw/.wld + .prj) veya elle girilen sınır kutusu/çözünürlükten okunur. Georeferans yoksa sonuçlar piksel cinsindendir.
+- **Tespit motoru (yapay zeka)**
+  - Her tarih için binalar ayrı ayrı bulunur: ChangeStar ViT-B bina segmentasyon modeli (ONNX). İlk kullanımda Hugging Face'ten indirilir.
+  - İki tarihin binaları piksel değil **bina (nesne)** olarak eşleştirilir. Böylece eğik çekimde çatıların kayması sahte değişim üretmez; kayma toleransı her görüntü çifti için görüntüden ölçülür.
+  - **Yeniden yapılan bina:** Daha önce de yapı olan bir yerde, ayak izi eskisiyle örtüşmeyen yeni bina. Örneğin birkaç evin yerine tek bir blok. Kentsel dönüşümü görünür kılan kategori budur.
+  - Eksik arşiv karoları analiz dışında bırakılır ve kullanıcı uyarılır.
+  - Wayback "yılı" yalnızca arşiv tarihidir. Görüntünün **gerçek çekim tarihi** Esri meta veri servisinden okunup gösterilir.
+- **Hız**
+  - NVIDIA GPU varsa model GPU'da çalışır (RTX 3050'de 1024 px'lik bölüm başına ~0.6 sn; CPU'da ~10 sn).
+  - Büyük görüntüler için iki seçenek var: **Hızlı** (0.5× küçültme) ve **Derin analiz** (orijinal çözünürlük).
+- **Sonuç ekranı**
+  - Önce/sonra karşılaştırma perdesi (swipe), yakınlaştırma ve kaydırma.
+  - Bina poligonları ve bina kartları, kategori katmanlarını açıp kapatma.
+  - GeoJSON ve CSV dışa aktarma. Projeler SQLite'ta saklanır.
 
-### Uygulamayı Çalıştırma
-Uygulama klasöründe terminalden:
+## Bilinen sınırlamalar
+
+- Çok büyük sanayi/AVM çatıları, aşırı eğik çekilmiş yüksek kuleler ve puslu/düşük kaliteli eski arşiv görüntüleri modelin zayıf olduğu durumlardır.
+- Sıkışık gecekondu dokusu eski görüntüde tek bir büyük leke olarak bulunabilir. O zaman yerine yapılan bloklar "mevcut" sayılabilir.
+- Model ağırlıklarının (Changen2 / ChangeStar) lisansı ticari olmayan kullanımla sınırlıdır.
+
+Ölçümler ve araştırma notları: [docs/research/2026-10-01-tespit-iyilestirme.md](docs/research/2026-10-01-tespit-iyilestirme.md).
+
+---
+
+## Kurulum ve çalıştırma
+
+Gereksinim: Python 3.10+.
+
+**Windows:** `run.bat`. Şunları kendisi yapar:
+- eksik paketleri kurar,
+- NVIDIA GPU varsa GPU destekli çalışma zamanını kurar,
+- 5000'den başlayarak ilk boş portu seçer (5000'i Docker gibi başka bir uygulama kullanıyor olabilir),
+- tarayıcıyı açar.
+
+**Elle:**
+
 ```bash
-python app.py
+pip install -r requirements.txt          # CPU
+# NVIDIA GPU için (onnxruntime yerine):
+pip uninstall -y onnxruntime && pip install -r requirements-gpu.txt
+python app.py                            # http://127.0.0.1:5000 (veya PORT ortam değişkeni)
 ```
-Ardından tarayıcınızda açın:
-```
-http://127.0.0.1:5000
+
+GPU olsa bile işlemciye zorlamak için `ATLAS_DEVICE=cpu`.
+
+Testler (çevrimdışı çalışır, gerçek modeli yüklemez):
+
+```bash
+python -m pytest
 ```
 
 ---
 
-## 📁 Proje Yapısı
+## Proje yapısı
 
 ```
-d:\code\changedetection\
-├── app.py                      # Flask REST API ve sunucu
-├── model\
-│   └── change_detector.py      # PyTorch Siamese Net & Yapısal Bina Değişim Motoru
-├── static\
-│   ├── css\
-│   │   └── style.css           # Modern koyu temalı GIS arayüz stilleri
-│   ├── js\
-│   │   └── app.js              # Leaflet harita yönetimi, API çağrıları & GeoJSON
-├── templates\
-│   └── index.html              # Kontrol paneli ve harita gösterge paneli
-└── README.md
+app.py                     Flask uygulaması ve REST API
+model/
+  ml_detector.py           Yapay zeka tespit motoru (sonuç sözleşmesi, istatistikler, dışa aktarma verisi)
+  segmenter.py             ONNX bina segmentasyonu (GPU/CPU, 1024 px bölümler)
+  object_change.py         Nesne eşleştirme: yeni / yıkılan / yeniden yapılan / mevcut, kayma toleransı ölçümü
+  georef.py                GeoTIFF / world file / elle georeferans
+  live_satellite.py        Esri Wayback karoları, hazır bölgeler, gerçek çekim tarihleri
+  jobs.py                  Uzun analizler için arka plan işleri
+  change_detector.py       Eski klasik (OpenCV) motor; yalnızca API'de, testlerle sabitlenmiş
+  geo.py                   Koordinat ve karo matematiği
+  project_manager.py       SQLite proje kayıtları
+static/js/app.js           Arayüz (sihirbaz, harita seçimi, sonuç ekranı)
+templates/index.html       Tek sayfa arayüz
+tests/                     pytest testleri (tests/fixtures: LEVIR-CD / DSIFN test çiftleri)
+docs/                      Tasarım, plan ve araştırma belgeleri
 ```
