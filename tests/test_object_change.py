@@ -47,3 +47,34 @@ def test_classify_splits_extension_of_existing_building():
 def test_classify_empty():
     objects, label = classify_objects(np.zeros((64, 64), np.float32), np.zeros((64, 64), np.float32))
     assert objects == [] and not label.any()
+
+
+def _city(shift_px, n=30, size=400):
+    """n square buildings on a grid; in T2 every roof is moved by shift_px (off-nadir parallax)."""
+    p1 = np.zeros((size, size), np.float32)
+    p2 = np.zeros((size, size), np.float32)
+    k = 0
+    for row in range(6):
+        for col in range(6):
+            if k == n:
+                return p1, p2
+            y, x = 40 + row * 55, 40 + col * 55
+            p1[y:y + 30, x:x + 30] = 0.95
+            p2[y:y + 30, x + shift_px:x + 30 + shift_px] = 0.95
+            k += 1
+    return p1, p2
+
+
+def test_estimate_parallax_measures_the_roof_shift():
+    from model.object_change import estimate_parallax_px
+    p1, p2 = _city(shift_px=10)
+    tol = estimate_parallax_px(p1, p2, max_shift_px=24)
+    assert 10 <= tol <= 14  # shift + a small margin
+    p1, p2 = _city(shift_px=0)
+    assert estimate_parallax_px(p1, p2, max_shift_px=24) <= 3
+
+
+def test_estimate_parallax_needs_enough_matches():
+    from model.object_change import estimate_parallax_px
+    p1, p2 = _city(shift_px=10, n=8)
+    assert estimate_parallax_px(p1, p2, max_shift_px=24) is None

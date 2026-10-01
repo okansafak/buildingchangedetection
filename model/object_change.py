@@ -117,3 +117,30 @@ def classify_objects(prob_t1, prob_t2, threshold=0.5, min_px=40, tolerance_px=0)
             _emit(objects, label_mask, "demolished", part, x, y, p1, p2)
 
     return objects, label_mask
+
+
+def estimate_parallax_px(prob_t1, prob_t2, max_shift_px, max_objects=150, min_matches=20, min_px=60):
+    """How far roofs move between the two dates, measured from the data (off-nadir parallax,
+    misregistration). The largest T2 buildings are template-matched against the T1 probability
+    map within ±max_shift_px; for the well-matched ones (buildings that exist on both dates) the
+    75th percentile of the shift length plus a 2 px margin is returned. None when fewer than
+    min_matches buildings match (small images): the caller then uses a small default."""
+    radius = int(round(max_shift_px))
+    b2 = (prob_t2 >= 0.5).astype(np.uint8)
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(b2, connectivity=8)
+    order = np.argsort(-stats[1:, cv2.CC_STAT_AREA])[:max_objects] + 1
+    h, w = prob_t2.shape
+    shifts = []
+    for i in order:
+        x, y, cw, ch, area = stats[i]
+        if area < min_px or x < radius or y < radius or x + cw > w - radius or y + ch > h - radius:
+            continue
+        template = (labels[y:y + ch, x:x + cw] == i).astype(np.float32)
+        search = prob_t1[y - radius:y + ch + radius, x - radius:x + cw + radius].astype(np.float32)
+        response = cv2.matchTemplate(search, template, cv2.TM_CCORR_NORMED)
+        _, best, _, (bx, by) = cv2.minMaxLoc(response)
+        if best > 0.6:
+            shifts.append(np.hypot(bx - radius, by - radius))
+    if len(shifts) < min_matches:
+        return None
+    return float(np.percentile(shifts, 75)) + 2.0

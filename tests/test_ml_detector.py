@@ -127,3 +127,29 @@ def test_invalid_mask_excludes_areas_without_imagery():
     r = MLChangeDetector(FakeSegmenter()).detect(a, b, mode="deep", invalid_mask=invalid)
     assert r["stats"]["new_buildings_count"] == 0
     assert (r["stats"]["demolished_count"], r["stats"]["existing_count"]) == (1, 1)
+
+
+def _shifted_city(shift_px):
+    t1 = np.zeros((420, 420, 3), np.uint8)
+    t2 = np.zeros((420, 420, 3), np.uint8)
+    for row in range(6):
+        for col in range(6):
+            y, x = 40 + row * 60, 40 + col * 60
+            t1[y:y + 30, x:x + 30] = 255
+            t2[y:y + 30, x + shift_px:x + 30 + shift_px] = 255
+    return Image.fromarray(t1), Image.fromarray(t2)
+
+
+def test_parallax_tolerance_is_measured_from_the_images():
+    # 0.25 m/px: a 12 px roof shift is 3 m, above the 2 m default -> only a measured tolerance absorbs it
+    a, b = _shifted_city(12)
+    r = MLChangeDetector(FakeSegmenter()).detect(a, b, gsd=0.25, mode="deep", min_area_m2=5)
+    assert r["stats"]["existing_count"] == 36
+    assert r["stats"]["new_buildings_count"] == 0 and r["stats"]["demolished_count"] == 0
+    assert 3.0 <= r["parallax_tolerance_m"] <= 4.0
+
+
+def test_parallax_tolerance_defaults_to_two_metres_without_enough_buildings():
+    a, b = _pair()
+    r = MLChangeDetector(FakeSegmenter()).detect(a, b, gsd=0.25, mode="deep")
+    assert r["parallax_tolerance_m"] == 2.0

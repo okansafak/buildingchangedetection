@@ -15,7 +15,7 @@ import numpy as np
 from PIL import Image
 
 from model.change_detector import BUILDING_TYPES
-from model.object_change import classify_objects
+from model.object_change import classify_objects, estimate_parallax_px
 from model.segmenter import BuildingSegmenter
 
 Image.MAX_IMAGE_PIXELS = 250_000_000  # 8192 x 4468 aerial mosaics are legitimate input
@@ -23,7 +23,11 @@ Image.MAX_IMAGE_PIXELS = 250_000_000  # 8192 x 4468 aerial mosaics are legitimat
 ASSUMED_GSD = 0.5            # m/px, only to size pixel thresholds when the GSD is unknown; never reported
 MODEL_GSD = 0.5              # the segmenter works best near this resolution
 UPSAMPLE_MIN_GSD = 0.75      # only clearly coarse imagery (e.g. Wayback zoom 17, ~0.9 m) is upsampled toward MODEL_GSD
-PARALLAX_TOLERANCE_M = 8.0   # a roof may move this far between dates and still be the same building
+# How far a roof may move between dates and still be the same building. Measured per image pair
+# (estimate_parallax_px): ~7 m on off-nadir city imagery, near 0 on nadir imagery, where a fixed 8 m cost
+# ~0.03 F1 by merging new buildings into adjacent existing ones.
+DEFAULT_PARALLAX_M = 2.0     # when too few buildings match to measure it
+MAX_PARALLAX_M = 15.0        # search radius / upper bound
 FAST_MIN_SIDE = 2048         # "Hızlı" halves only images larger than this ...
 FAST_MAX_GSD = 1.2           # ... and only while the halved GSD stays at or below this (2 m/px was unusable)
 ORDER = {"new": 0, "demolished": 1, "existing": 2}
@@ -206,8 +210,11 @@ class MLChangeDetector:
 
         report(0.96, "Değişimler sınıflandırılıyor")
         min_px = max(12, int(min_area_m2 / px_gsd ** 2))
+        max_shift_px = MAX_PARALLAX_M / px_gsd
+        measured = estimate_parallax_px(p1, p2, max_shift_px=min(max_shift_px, 48))
+        tolerance_px = min(measured if measured is not None else DEFAULT_PARALLAX_M / px_gsd, max_shift_px)
         objects, label_mask = classify_objects(p1, p2, threshold=threshold, min_px=min_px,
-                                               tolerance_px=PARALLAX_TOLERANCE_M / px_gsd)
+                                               tolerance_px=tolerance_px)
         objects.sort(key=lambda o: (ORDER[o["type"]], -o["area_px"]))
 
         buildings, features = [], []
@@ -230,6 +237,7 @@ class MLChangeDetector:
             "engine": "ml",
             "device": getattr(self.segmenter, "device", None),  # "cuda" | "cpu"
             "analysis_mode": mode,
+            "parallax_tolerance_m": round(tolerance_px * px_gsd, 1),
             "image_size": [w, h],
             "bounds": georef.bounds_wgs84(w, h) if georef is not None else None,
             "georef": georef.summary(w, h) if georef is not None else None,

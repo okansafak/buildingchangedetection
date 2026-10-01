@@ -4,6 +4,10 @@ Tarih: 2026-10-01 · Kapsam: mevcut ML motoru (ChangeStar ViT-B ONNX bina segmen
 
 Bu rapordaki sayıların hepsi bu makinede, gerçek modelle ölçüldü. Doğruluk ölçümleri `tests/fixtures/samples` altındaki 5 etiketli LEVIR-CD / DSIFN çiftinde değişim F1'idir. "Kullanıcı görüntüsü", `sampla_data/2020.jpg → 2026.jpg` mozaiğinden alınan 2048 px'lik bir kesit (eğik çekim, Başakşehir); bunun etiketi yok, sayımlar gözle kontrol edildi.
 
+## Durum (2026-10-01)
+
+1–4 uygulandı: GPU (CUDA, CPU'ya otomatik geri dönüş), gerçek çekim tarihleri, eksik karo maskeleme, uyarlanabilir paralaks toleransı. Uyarlanabilir toleransın uygulamadaki sonucu: 5 etiketli çiftte ortalama F1 **0.753** (sabit 8 m: 0.725); eğik kullanıcı görüntüsünde tolerans otomatik **6.6 m**, sonuç 75 yeni / 24 yıkılan / 406 mevcut (sabit 8 m: 67 / 22 / 406). 5 (lisans uyumlu model) açık.
+
 ## Özet: önerilen sıra
 
 | # | İyileştirme | Ölçülen etki | Maliyet |
