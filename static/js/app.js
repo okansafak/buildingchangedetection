@@ -151,8 +151,6 @@ const el = {
     modalSettings: document.getElementById('modal-settings'),
 
     // Settings Modal Controls
-    rangeSettingThreshold: document.getElementById('range-setting-threshold'),
-    lblSettingThreshold: document.getElementById('lbl-setting-threshold'),
     rangeSettingMinarea: document.getElementById('range-setting-minarea'),
     lblSettingMinarea: document.getElementById('lbl-setting-minarea'),
     btnSaveSettings: document.getElementById('btn-save-settings'),
@@ -1552,23 +1550,18 @@ function escapeHtml(str) {
     });
 }
 
+// Only the minimum building area is user-tunable: the ML engine's probability threshold had no
+// measurable effect (F1 0.726 / 0.725 / 0.722 at 0.4 / 0.5 / 0.6), so that setting was removed.
 function getAiSettings() {
     try {
         const saved = localStorage.getItem('atlas_ai_settings');
         if (saved) return JSON.parse(saved);
     } catch(e) {}
-    return { threshold: 0.45, minArea: 30.0 };
+    return { minArea: 30.0 };
 }
 
 function initSettings() {
     const s = getAiSettings();
-    if (el.rangeSettingThreshold) {
-        el.rangeSettingThreshold.value = s.threshold;
-        if (el.lblSettingThreshold) el.lblSettingThreshold.textContent = parseFloat(s.threshold).toFixed(2);
-        el.rangeSettingThreshold.addEventListener('input', (e) => {
-            if (el.lblSettingThreshold) el.lblSettingThreshold.textContent = parseFloat(e.target.value).toFixed(2);
-        });
-    }
     if (el.rangeSettingMinarea) {
         el.rangeSettingMinarea.value = s.minArea;
         if (el.lblSettingMinarea) el.lblSettingMinarea.textContent = `${s.minArea} m²`;
@@ -1578,9 +1571,8 @@ function initSettings() {
     }
     if (el.btnSaveSettings) {
         el.btnSaveSettings.addEventListener('click', () => {
-            const threshold = parseFloat(el.rangeSettingThreshold.value);
             const minArea = parseFloat(el.rangeSettingMinarea.value);
-            localStorage.setItem('atlas_ai_settings', JSON.stringify({ threshold, minArea }));
+            localStorage.setItem('atlas_ai_settings', JSON.stringify({ minArea }));
             closeModal('modal-settings');
             showToast('Model ve tespit ayarları kaydedildi!', 'success');
         });

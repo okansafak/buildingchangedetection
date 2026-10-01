@@ -56,7 +56,9 @@ def test_detect_without_georef_stays_in_pixels():
     assert [x["type"] for x in r["buildings"]] == ["new", "demolished", "existing"]
     new = r["buildings"][0]
     assert new["centroid"] is None and new["area_m2"] is None and new["area_px"] > 6000
-    assert r["geojson"]["features"][0]["geometry"]["coordinates"][0] == new["px_coords"]
+    # GIS tools assume y grows upwards: pixel GeoJSON uses (x, -y) so the image is not shown upside down
+    assert r["geojson"]["features"][0]["geometry"]["coordinates"][0] == [[x, -y] for x, y in new["px_coords"]]
+    assert r["geojson"]["crs_note"].startswith("Piksel")
     assert r["metrics"] is None
 
 

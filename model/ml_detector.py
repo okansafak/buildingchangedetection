@@ -104,7 +104,7 @@ def _record(b_idx, obj, georef, gsd):
         ring = [[round(float(x), 7), round(float(y), 7)] for x, y in zip(lon[:-1], lat[:-1])]
         centroid = [round(float(lat[-1]), 7), round(float(lon[-1]), 7)]
     else:
-        ring = px_coords
+        ring = [[x, -y] for x, y in px_coords]  # pixel space with y up, so GIS tools do not flip the image
         centroid = None
 
     b_info = {
@@ -259,7 +259,13 @@ class MLChangeDetector:
                 "gsd": round(gsd, 3) if gsd else None,
             },
             "buildings": buildings,
-            "geojson": {"type": "FeatureCollection", "georeferenced": georef is not None, "features": features},
+            "geojson": {
+                "type": "FeatureCollection",
+                "georeferenced": georef is not None,
+                **({} if georef is not None else {
+                    "crs_note": "Piksel koordinatları (x, -y): görüntü georeferanssız, gerçek konum bilgisi yok."}),
+                "features": features,
+            },
             "overlays": render_overlays(label_mask, p1, p2, t1, t2, out_dir, url_prefix),
             "metrics": change_metrics(label_mask, ground_truth) if ground_truth is not None else None,
         }

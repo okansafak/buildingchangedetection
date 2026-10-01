@@ -70,3 +70,36 @@ def test_save_without_name_gets_default_and_clear_removes_all(client):
     res = client.post("/api/projects/clear")
     assert res.get_json() == {"success": True, "message": "Tüm projeler başarıyla sıfırlandı"}
     assert client.get("/api/projects").get_json()["projects"] == []
+
+
+def _ml_result(client):
+    """Runs an ML detection on an uploaded fixture pair; returns its result (overlays written to RESULTS_FOLDER)."""
+    from helpers import upload_pair
+    up = upload_pair(client, "levir1")
+    start = client.post("/api/detect", json={"engine": "ml", "scenario_id": "custom",
+                                             "path_A": up["path_A"], "path_B": up["path_B"], "analysis_mode": "deep"})
+    return client.get(f"/api/jobs/{start.get_json()['job_id']}").get_json()["result"]
+
+
+def _run_dir(app_module, result):
+    import os
+    run_id = result["overlays"]["t2_png_base64"].split("/")[3]
+    return os.path.join(app_module.app.config["RESULTS_FOLDER"], run_id)
+
+
+def test_deleting_a_project_deletes_its_result_images(client, app_module):
+    import os
+    result = _ml_result(client)
+    run_dir = _run_dir(app_module, result)
+    assert os.path.isdir(run_dir)
+    pid = client.post("/api/projects", json=_project_payload({**result, "center": None})).get_json()["project"]["id"]
+    assert client.delete(f"/api/projects/{pid}").status_code == 200
+    assert not os.path.exists(run_dir)
+
+
+def test_clearing_all_projects_deletes_all_result_images(client, app_module):
+    import os
+    run_dirs = [_run_dir(app_module, _ml_result(client)) for _ in range(2)]
+    assert all(os.path.isdir(d) for d in run_dirs)
+    assert client.post("/api/projects/clear").status_code == 200
+    assert not any(os.path.exists(d) for d in run_dirs)

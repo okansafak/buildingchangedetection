@@ -4,6 +4,8 @@ import json
 import csv
 import uuid
 import base64
+import re
+import shutil
 from io import BytesIO, StringIO
 from flask import Flask, render_template, request, jsonify, send_file, Response
 from flask_cors import CORS
@@ -509,15 +511,29 @@ def get_project_by_id(project_id):
 
 @app.route('/api/projects/<project_id>', methods=['DELETE'])
 def delete_project_by_id(project_id):
+    project = project_mgr.get_project(project_id)
     deleted = project_mgr.delete_project(project_id)
     if not deleted:
         return jsonify({"success": False, "error": "Proje bulunamadı veya silinemedi"}), 404
+    for run_dir in _result_dirs((project or {}).get('results_data')):
+        shutil.rmtree(run_dir, ignore_errors=True)
     return jsonify({"success": True, "message": "Proje başarıyla silindi"})
 
 @app.route('/api/projects/clear', methods=['POST'])
 def clear_all_projects():
     project_mgr.clear_all()
+    shutil.rmtree(app.config['RESULTS_FOLDER'], ignore_errors=True)
     return jsonify({"success": True, "message": "Tüm projeler başarıyla sıfırlandı"})
+
+
+def _result_dirs(results_data):
+    """static/results/<run_id> folders whose images a saved ML result references (deleted with its project)."""
+    dirs = set()
+    for url in ((results_data or {}).get('overlays') or {}).values():
+        match = re.match(r'^/static/results/([0-9a-f]{12})/', url) if isinstance(url, str) else None
+        if match:
+            dirs.add(os.path.join(app.config['RESULTS_FOLDER'], match.group(1)))
+    return dirs
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
