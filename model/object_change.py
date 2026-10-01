@@ -165,27 +165,36 @@ def classify_objects(prob_t1, prob_t2, threshold=0.5, min_px=40, tolerance_px=0)
     return objects, label_mask
 
 
-def estimate_parallax_px(prob_t1, prob_t2, max_shift_px, max_objects=150, min_matches=20, min_px=60):
+def estimate_parallax_px(prob_t1, prob_t2, max_shift_px, max_objects=300, min_matches=20, min_px=200, quality=0.75):
     """How far roofs move between the two dates, measured from the data (off-nadir parallax,
-    misregistration). The largest T2 buildings are template-matched against the T1 probability
-    map within ±max_shift_px; for the well-matched ones (buildings that exist on both dates) the
-    75th percentile of the shift length plus a 2 px margin is returned. None when fewer than
-    min_matches buildings match (small images): the caller then uses a small default."""
+    misregistration). A fixed-seed random sample of T2 buildings (>= min_px) is template-matched
+    against the T1 probability map within ±max_shift_px; for the reliable matches (buildings that
+    exist on both dates) the 75th percentile of the shift length plus a 2 px margin is returned.
+    The sample is random, not the largest buildings: parallax grows with height, and the largest
+    footprints in a city are low halls (largest-first gave 4.5 m on the whole Başakşehir mosaic vs
+    6.6 m on a crop of it; random sampling gives 11.7 vs 11.2 px). None when fewer than min_matches
+    buildings match (small images): the caller then uses a small default."""
     radius = int(round(max_shift_px))
     b2 = (prob_t2 >= 0.5).astype(np.uint8)
     n, labels, stats, _ = cv2.connectedComponentsWithStats(b2, connectivity=8)
-    order = np.argsort(-stats[1:, cv2.CC_STAT_AREA])[:max_objects] + 1
     h, w = prob_t2.shape
+    candidates = [
+        i for i in range(1, n)
+        if stats[i, cv2.CC_STAT_AREA] >= min_px
+        and stats[i, cv2.CC_STAT_LEFT] >= radius and stats[i, cv2.CC_STAT_TOP] >= radius
+        and stats[i, cv2.CC_STAT_LEFT] + stats[i, cv2.CC_STAT_WIDTH] <= w - radius
+        and stats[i, cv2.CC_STAT_TOP] + stats[i, cv2.CC_STAT_HEIGHT] <= h - radius
+    ]
+    if len(candidates) > max_objects:
+        candidates = np.random.default_rng(0).choice(candidates, size=max_objects, replace=False)
     shifts = []
-    for i in order:
-        x, y, cw, ch, area = stats[i]
-        if area < min_px or x < radius or y < radius or x + cw > w - radius or y + ch > h - radius:
-            continue
+    for i in candidates:
+        x, y, cw, ch = stats[i, cv2.CC_STAT_LEFT], stats[i, cv2.CC_STAT_TOP], stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
         template = (labels[y:y + ch, x:x + cw] == i).astype(np.float32)
         search = prob_t1[y - radius:y + ch + radius, x - radius:x + cw + radius].astype(np.float32)
         response = cv2.matchTemplate(search, template, cv2.TM_CCORR_NORMED)
         _, best, _, (bx, by) = cv2.minMaxLoc(response)
-        if best > 0.6:
+        if best > quality:
             shifts.append(np.hypot(bx - radius, by - radius))
     if len(shifts) < min_matches:
         return None
