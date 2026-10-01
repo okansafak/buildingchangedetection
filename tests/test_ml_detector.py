@@ -111,3 +111,19 @@ def test_load_rgb_16bit_4band_tiff(tmp_path):
     tifffile.imwrite(p, arr, photometric="minisblack", planarconfig="separate")
     rgb = load_rgb(p)
     assert rgb.shape == (50, 60, 3) and rgb.dtype == np.uint8 and rgb.max() > 200
+
+
+def test_result_reports_the_device_used():
+    seg = FakeSegmenter()
+    seg.device = "cuda"
+    a, b = _pair()
+    assert MLChangeDetector(seg).detect(a, b, mode="deep")["device"] == "cuda"
+
+
+def test_invalid_mask_excludes_areas_without_imagery():
+    a, b = _pair()
+    invalid = np.zeros((300, 400), bool)
+    invalid[140:230, 240:360] = True  # covers the "new" building
+    r = MLChangeDetector(FakeSegmenter()).detect(a, b, mode="deep", invalid_mask=invalid)
+    assert r["stats"]["new_buildings_count"] == 0
+    assert (r["stats"]["demolished_count"], r["stats"]["existing_count"]) == (1, 1)

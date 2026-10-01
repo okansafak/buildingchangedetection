@@ -164,11 +164,13 @@ class MLChangeDetector:
         self.segmenter = segmenter or BuildingSegmenter()
 
     def detect(self, img1, img2, georef=None, gsd=None, min_area_m2=30.0, threshold=0.5,
-               mode="fast", ground_truth=None, progress=None, out_dir=None, url_prefix=""):
+               mode="fast", ground_truth=None, progress=None, out_dir=None, url_prefix="", invalid_mask=None):
         """
         img1/img2: paths or PIL images (T1 is resized onto T2's pixel grid).
         georef: GeoRef of T2's grid or None. gsd: m/px override (manual entry).
         mode: "fast" | "deep". progress(fraction 0..1, Turkish stage text).
+        invalid_mask: optional H x W bool mask (T2 grid) of areas without real imagery, e.g. tiles
+        missing from the archive; no building is detected there.
         """
         report = progress or (lambda fraction, stage: None)
         report(0.01, "Görüntüler okunuyor")
@@ -196,6 +198,10 @@ class MLChangeDetector:
         report(0.03, "Bina modeli hazırlanıyor")
         p1 = self.segmenter.predict(t1, lambda d, n: report(0.05 + 0.45 * d / n, f"T1 binaları bulunuyor ({d}/{n} karo)"))
         p2 = self.segmenter.predict(t2, lambda d, n: report(0.50 + 0.45 * d / n, f"T2 binaları bulunuyor ({d}/{n} karo)"))
+        if invalid_mask is not None:
+            invalid = cv2.resize(invalid_mask.astype(np.uint8), (w, h), interpolation=cv2.INTER_NEAREST).astype(bool)
+            p1[invalid] = 0.0
+            p2[invalid] = 0.0
 
         report(0.96, "Değişimler sınıflandırılıyor")
         min_px = max(12, int(min_area_m2 / px_gsd ** 2))
@@ -221,6 +227,7 @@ class MLChangeDetector:
         return {
             "success": True,
             "engine": "ml",
+            "device": getattr(self.segmenter, "device", None),  # "cuda" | "cpu"
             "analysis_mode": mode,
             "image_size": [w, h],
             "bounds": georef.bounds_wgs84(w, h) if georef is not None else None,

@@ -1,0 +1,3 @@
+# NVIDIA GPU: replaces onnxruntime (CPU). run.bat installs this automatically when nvidia-smi is present.
+# Do not install together with onnxruntime: pip uninstall -y onnxruntime first.
+onnxruntime-gpu[cuda,cudnn]

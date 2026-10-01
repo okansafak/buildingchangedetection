@@ -9,7 +9,7 @@ from flask import Flask, render_template, request, jsonify, send_file, Response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from model.change_detector import BuildingChangeDetector
-from model.live_satellite import LiveSatelliteFetcher, WAYBACK_RELEASES, LIVE_HOTSPOTS
+from model.live_satellite import LiveSatelliteFetcher, WAYBACK_RELEASES, LIVE_HOTSPOTS, capture_info, placeholder_tile_mask
 from model.project_manager import ProjectManager
 from PIL import Image
 from model.ml_detector import MLChangeDetector, load_rgb
@@ -125,6 +125,8 @@ def live_preview():
         )
     except Exception as e:
         return jsonify({"success": False, "error": f"Canlı uydu verisi çekilirken hata oluştu: {str(e)}"}), 500
+    missing_t1 = _missing_tile_count(img_t1)
+    missing_t2 = _missing_tile_count(img_t2)
     return jsonify({
         "success": True,
         "t1": _jpeg_data_uri(img_t1),
@@ -133,7 +135,17 @@ def live_preview():
         "gsd": gsd,
         "grid_size": grid,
         "years": {"t1": year_t1, "t2": year_t2},
+        "capture": {"t1": capture_info(lat, lon, year_t1), "t2": capture_info(lat, lon, year_t2)},
+        "missing_tiles": {"t1": missing_t1, "t2": missing_t2, "total": grid * grid},
     })
+
+
+def _missing_tile_count(image):
+    return int(placeholder_tile_mask(image)[::256, ::256].sum())
+
+
+class LiveImageryMissing(ValueError):
+    """The archive has no imagery at all for one of the dates (Turkish message)."""
 
 
 def _live_detect(params, report=None):
@@ -145,10 +157,19 @@ def _live_detect(params, report=None):
         lat=params['lat'], lon=params['lon'], zoom=LIVE_ANALYSIS_ZOOM,
         year_t1=params['year_t1'], year_t2=params['year_t2'], grid_size=params['grid_size'],
     )
+    mask_t1, mask_t2 = placeholder_tile_mask(img_t1), placeholder_tile_mask(img_t2)
+    if mask_t1.all() or mask_t2.all():
+        raise LiveImageryMissing("Seçilen yıllar için bu bölgede arşiv görüntüsü yok; farklı bir yıl veya konum deneyin.")
+    missing = mask_t1 | mask_t2
+    warnings = []
+    if missing.any():
+        n_missing = int(missing[::256, ::256].sum())
+        warnings.append(f"{n_missing}/{params['grid_size'] ** 2} karo seçilen yıllardan birinde arşivde yok; "
+                        "bu alanlar analiz dışı bırakıldı.")
     if params['engine'] == 'ml':
         tiles_ref = georef.from_bounds_wgs84(bounds, img_t2.width, img_t2.height, source="tiles")
         result = ml_detector.detect(img_t1, img_t2, georef=tiles_ref, min_area_m2=params['min_area_m2'],
-                                    mode="fast", progress=report)
+                                    mode="fast", progress=report, invalid_mask=missing if missing.any() else None)
     else:
         result = detector.detect(
             img1=img_t1,
@@ -164,6 +185,9 @@ def _live_detect(params, report=None):
     result["mode"] = "live_satellite"
     result["grid_size"] = params['grid_size']
     result["years"] = {"t1": params['year_t1'], "t2": params['year_t2']}
+    result["capture"] = {"t1": capture_info(params['lat'], params['lon'], params['year_t1']),
+                         "t2": capture_info(params['lat'], params['lon'], params['year_t2'])}
+    result["warnings"] = warnings
     LAST_RESULTS['latest'] = result
     return result
 
@@ -200,10 +224,14 @@ def run_live_detect():
                 return _live_detect(params, report)
             except ModelUnavailable as e:
                 raise RuntimeError(MODEL_ERROR.format(e)) from e
+            except LiveImageryMissing as e:
+                raise RuntimeError(str(e)) from e
         return jsonify({"success": True, "job_id": jobs.submit(work)}), 202
 
     try:
         return jsonify(_live_detect(params))
+    except LiveImageryMissing as e:
+        return jsonify({"success": False, "error": str(e)}), 422
     except ModelUnavailable as e:
         return jsonify({"success": False, "error": MODEL_ERROR.format(e)}), 503
     except Exception as e:

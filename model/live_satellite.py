@@ -1,9 +1,25 @@
+import datetime
+import json
 import os
+import urllib.parse
 import urllib.request
 from PIL import Image
 from io import BytesIO
 
+import numpy as np
+
 from model import geo
+
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+# Flat colour of the tile drawn when the archive has no imagery (see fetch_patch)
+PLACEHOLDER_RGB = (200, 200, 200)
+
+# Esri publishes, per Wayback release, a metadata service with the real acquisition date of the
+# imagery shown at each place. Layer 6 ("1.2m Resolution Metadata") covers the zoom-17 scale.
+WAYBACK_CONFIG_URL = "https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json"
+METADATA_LAYER_Z17 = 6
+_CONFIG_CACHE = {}
+_CAPTURE_CACHE = {}
 
 # Curated Wayback release mappings for clean historical comparison
 WAYBACK_RELEASES = {
@@ -40,6 +56,61 @@ LIVE_HOTSPOTS = {
     }
 }
 
+def placeholder_tile_mask(image, tile=256):
+    """H x W bool mask of the 256 px tiles that are the 'Arşiv Görüntüsü Yok' placeholder (archive had no imagery)."""
+    a = np.asarray(image.convert('RGB'))
+    flat = np.all(a == np.array(PLACEHOLDER_RGB, dtype=a.dtype), axis=2)
+    mask = np.zeros(flat.shape, dtype=bool)
+    for y in range(0, flat.shape[0], tile):
+        for x in range(0, flat.shape[1], tile):
+            if flat[y:y + tile, x:x + tile].mean() > 0.9:  # the text covers a few percent of the tile
+                mask[y:y + tile, x:x + tile] = True
+    return mask
+
+
+def _get_json(url, timeout=8):
+    req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read().decode('utf-8'))
+
+
+def capture_info(lat, lon, year):
+    """{"date": "YYYY-MM-DD", "source", "resolution_m"} of the imagery the Wayback release for `year`
+    actually shows at lat/lon (zoom 17), or None when the metadata service is unreachable.
+    A release is a snapshot of the basemap, so its imagery can be years older than its own date."""
+    release = WAYBACK_RELEASES.get(year)
+    if release is None:
+        return None
+    key = (release["id"], round(lat, 3), round(lon, 3))
+    if key in _CAPTURE_CACHE:
+        return _CAPTURE_CACHE[key]
+    try:
+        if "config" not in _CONFIG_CACHE:
+            _CONFIG_CACHE["config"] = _get_json(WAYBACK_CONFIG_URL)
+        layer_url = _CONFIG_CACHE["config"][release["id"]]["metadataLayerUrl"]
+        params = urllib.parse.urlencode({
+            "geometry": f"{lon},{lat}", "geometryType": "esriGeometryPoint", "inSR": 4326,
+            "spatialRel": "esriSpatialRelIntersects", "outFields": "SRC_DATE2,SRC_DATE,NICE_DESC,SRC_DESC,SAMP_RES",
+            "returnGeometry": "false", "f": "json",
+        })
+        features = _get_json(f"{layer_url}/{METADATA_LAYER_Z17}/query?{params}").get("features") or []
+        attrs = features[0]["attributes"] if features else {}
+        date = attrs.get("SRC_DATE2") or attrs.get("SRC_DATE")
+        if isinstance(date, (int, float)):
+            date = datetime.datetime.fromtimestamp(date / 1000, datetime.timezone.utc).strftime("%Y-%m-%d")
+        if not date:
+            return None
+        info = {
+            "date": str(date),
+            "source": attrs.get("NICE_DESC") or attrs.get("SRC_DESC"),
+            "resolution_m": round(float(attrs["SAMP_RES"]), 2) if attrs.get("SAMP_RES") else None,
+        }
+    except Exception:
+        return None  # not cached: the service has short outages (503)
+    _CAPTURE_CACHE[key] = info
+    return info
+
+
 class LiveSatelliteFetcher:
     """
     Fetches real-time multi-temporal high-resolution satellite imagery tiles
@@ -72,7 +143,7 @@ class LiveSatelliteFetcher:
                     tile_img = Image.open(cache_file)
                 else:
                     url = f"https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{release_id}/{zoom}/{ty}/{tx}"
-                    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+                    req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
                     try:
                         with urllib.request.urlopen(req, timeout=12) as resp:
                             data = resp.read()
@@ -85,7 +156,7 @@ class LiveSatelliteFetcher:
                         # fallback to the current live tile, because then T1 and T2 look identical 
                         # and the user thinks the swipe is broken. 
                         # We will generate a gray placeholder tile with text.
-                        tile_img = Image.new('RGB', (256, 256), color=(200, 200, 200))
+                        tile_img = Image.new('RGB', (256, 256), color=PLACEHOLDER_RGB)
                         from PIL import ImageDraw
                         draw = ImageDraw.Draw(tile_img)
                         try:

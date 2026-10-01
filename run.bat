@@ -30,6 +30,19 @@ if errorlevel 1 (
     )
 )
 
+rem NVIDIA GPU varsa CUDA destekli çalışma zamanını kur (bina tespiti ~15 kat hızlanır)
+where nvidia-smi >nul 2>nul
+if not errorlevel 1 (
+    python -c "import onnxruntime as o, sys; sys.exit(0 if 'CUDAExecutionProvider' in o.get_available_providers() else 1)" >nul 2>nul
+    if errorlevel 1 (
+        echo NVIDIA GPU bulundu, GPU destekli yapay zeka calisma zamani yukleniyor...
+        python -m pip uninstall -y onnxruntime
+        python -m pip install -r requirements-gpu.txt
+    )
+)
+rem GPU kontrolünden kalan hata kodu aşağıdaki port kontrolünü yanıltmasın
+ver >nul
+
 rem Port başka bir uygulamada (ör. Docker) kullanılıyorsa istekler o uygulamaya gidebilir;
 rem PORT verilmemişse 5000'den başlayarak ilk boş portu seç
 if not defined PORT (

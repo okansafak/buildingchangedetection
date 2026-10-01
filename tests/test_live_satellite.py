@@ -34,12 +34,14 @@ class FakeResponse:
 
 @pytest.fixture
 def fake_net(monkeypatch):
-    """Serves a solid-colour JPEG for every tile request; returns the list of requested URLs."""
+    """Serves a solid-colour JPEG for every request; returns the list of requested tile URLs
+    (metadata lookups for capture dates also hit urlopen, get a non-JSON body and are left out)."""
     calls = []
     data = _jpeg_bytes()
 
     def fake_urlopen(req, timeout=None):
-        calls.append(req.full_url)
+        if "/tile/" in req.full_url:
+            calls.append(req.full_url)
         return FakeResponse(data)
 
     monkeypatch.setattr(live_satellite.urllib.request, "urlopen", fake_urlopen)

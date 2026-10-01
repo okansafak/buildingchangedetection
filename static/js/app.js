@@ -884,6 +884,24 @@ function formatArea(areaM2, areaPx) {
 }
 
 // POST /api/detect; engine "ml" answers 202 + job_id, so poll /api/jobs until the job ends
+// A Wayback "year" is the archive release; the imagery in it can be years older
+function yearWithCapture(year, capture) {
+    return capture && capture.date ? `${year} · çekim ${capture.date.slice(0, 7)}` : year;
+}
+
+function showCaptureInfo(capture, y1, y2) {
+    const c = capture || {};
+    el.lblPreviewT1.textContent = yearWithCapture(y1, c.t1);
+    el.lblPreviewT2.textContent = yearWithCapture(y2, c.t2);
+    if (c.t1 && c.t2) {
+        const describe = (k, x) => `${k} ${x.date}${x.source ? ' (' + x.source + ')' : ''}`;
+        el.step2InfoText.textContent += ` Gerçek çekim tarihleri: ${describe('T1', c.t1)}, ${describe('T2', c.t2)}.`;
+        if (c.t1.date === c.t2.date) {
+            showToast(`Seçilen iki arşiv yılı aynı çekimi gösteriyor (${c.t1.date}); değişim bulunamaz, farklı yıllar seçin.`, 'warning', 9000);
+        }
+    }
+}
+
 // Shows a step-2 preview with the dashed tile grid the area was split into
 function showWithTileGrid(imgEl, src, n) {
     if (!n || n <= 1) { imgEl.src = src; return; }
@@ -974,6 +992,11 @@ async function handleStep1Next() {
                 const n = data.grid_size;
                 const sideM = Math.round(n * liveTileSizeM(state.selectedCoords[0]));
                 el.step2InfoText.textContent += ` Alan ${n}×${n} karoya bölündü (~${sideM} m × ${sideM} m).`;
+                showCaptureInfo(data.capture, y1, y2);
+                const m = data.missing_tiles;
+                if (m && (m.t1 || m.t2)) {
+                    showToast(`Arşivde eksik karo var (T1: ${m.t1}, T2: ${m.t2} / ${m.total}); bu alanlar analiz dışı bırakılacak.`, 'warning', 9000);
+                }
             } else {
                 showToast('Uydu verisi getirilemedi: ' + (data.error || ''), 'error');
             }
@@ -1063,6 +1086,7 @@ async function handleRunDetection() {
 
         // 1. Switch to Step 3
         goToStep(3);
+        (data.warnings || []).forEach(w => showToast(w, 'warning', 9000));
         if (data.engine === 'ml' && !data.georef && state.sourceType === 'custom-upload') {
             showToast('Görüntüler georeferanssız: alanlar ve dışa aktarılan koordinatlar piksel cinsindendir.', 'info', 7000);
         }
@@ -1100,8 +1124,9 @@ function renderPureImageResults(data) {
     if (el.layerBadgeExist) el.layerBadgeExist.textContent = stats.existing_count || 0;
     
     // Set years
-    const y1 = data.years ? data.years.t1 : 'Önceki';
-    const y2 = data.years ? data.years.t2 : 'Sonraki';
+    const capture = data.capture || {};
+    const y1 = data.years ? yearWithCapture(data.years.t1, capture.t1) : 'Önceki';
+    const y2 = data.years ? yearWithCapture(data.years.t2, capture.t2) : 'Sonraki';
     if (el.lblSwipeY1) el.lblSwipeY1.textContent = y1;
     if (el.lblSwipeY2) el.lblSwipeY2.textContent = y2;
     if (el.lblSwipeY1Tag) el.lblSwipeY1Tag.textContent = y1;
