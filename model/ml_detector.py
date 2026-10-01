@@ -195,9 +195,10 @@ class MLChangeDetector:
             w, h = nw, nh
         px_gsd = gsd if gsd is not None else ASSUMED_GSD / scale
 
+        # progress counts the model's 1024 px processing sections ("bölüm"), not the 256 px map tiles ("karo")
         report(0.03, "Bina modeli hazırlanıyor")
-        p1 = self.segmenter.predict(t1, lambda d, n: report(0.05 + 0.45 * d / n, f"T1 binaları bulunuyor ({d}/{n} karo)"))
-        p2 = self.segmenter.predict(t2, lambda d, n: report(0.50 + 0.45 * d / n, f"T2 binaları bulunuyor ({d}/{n} karo)"))
+        p1 = self.segmenter.predict(t1, lambda d, n: report(0.05 + 0.45 * d / n, f"T1 binaları bulunuyor (bölüm {d}/{n})"))
+        p2 = self.segmenter.predict(t2, lambda d, n: report(0.50 + 0.45 * d / n, f"T2 binaları bulunuyor (bölüm {d}/{n})"))
         if invalid_mask is not None:
             invalid = cv2.resize(invalid_mask.astype(np.uint8), (w, h), interpolation=cv2.INTER_NEAREST).astype(bool)
             p1[invalid] = 0.0

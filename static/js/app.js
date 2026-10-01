@@ -1125,8 +1125,8 @@ function renderPureImageResults(data) {
     
     // Set years
     const capture = data.capture || {};
-    const y1 = data.years ? yearWithCapture(data.years.t1, capture.t1) : 'Önceki';
-    const y2 = data.years ? yearWithCapture(data.years.t2, capture.t2) : 'Sonraki';
+    const y1 = data.years ? yearWithCapture(data.years.t1, capture.t1) : 'T1';
+    const y2 = data.years ? yearWithCapture(data.years.t2, capture.t2) : 'T2';
     if (el.lblSwipeY1) el.lblSwipeY1.textContent = y1;
     if (el.lblSwipeY2) el.lblSwipeY2.textContent = y2;
     if (el.lblSwipeY1Tag) el.lblSwipeY1Tag.textContent = y1;
@@ -1259,7 +1259,8 @@ function renderPureImageResults(data) {
         }
     }
 
-    // 5. Reset Stage View & apply 50% Swipe Split
+    // 5. Fit the stage to the image, reset the view & put the swipe divider in the middle
+    fitStageToImage();
     resetStageView();
     updateSwipeDivider(50);
 }
@@ -1291,9 +1292,10 @@ function focusOnBuilding(b) {
         const cy = b.centroid_px[1];
         
         state.zoomScale = 2.0;
-        // Calculate offset to bring (cx, cy) to center
-        state.panX = (imgSize[0] / 2 - cx) * 0.9;
-        state.panY = (imgSize[1] / 2 - cy) * 0.9;
+        // Offset (screen px) that brings (cx, cy) to the frame centre: image px -> stage px -> zoomed px
+        const pxPerImagePx = (el.swipeStageContent?.offsetWidth || imgSize[0]) / imgSize[0];
+        state.panX = (imgSize[0] / 2 - cx) * pxPerImagePx * state.zoomScale;
+        state.panY = (imgSize[1] / 2 - cy) * pxPerImagePx * state.zoomScale;
         applyStageTransform();
     }
 
@@ -1337,17 +1339,41 @@ function hideBuildingTooltip() {
     }
 }
 
-// Swipe Clip-Path Handler: Left shows T1 (1. İlk), Right shows T2 (2. Sonraki)
+// Swipe: the divider sits in the (unzoomed) stage frame at state.swipePosPct of its width, so it keeps
+// its size and screen position while the image is zoomed or panned; the T1 clip follows it.
+// Left shows T1 (1. İlk), right shows T2 (2. Sonraki).
 function updateSwipeDivider(pct) {
     pct = Math.max(0, Math.min(100, pct));
     state.swipePosPct = pct;
-
-    if (el.stageT1Clipper) {
-        el.stageT1Clipper.style.clipPath = `polygon(0 0, ${pct}% 0, ${pct}% 100%, 0 100%)`;
-    }
     if (el.swipeDividerLine) {
         el.swipeDividerLine.style.left = `${pct}%`;
     }
+    syncSwipeClip();
+}
+
+// Clip T1 at the divider's position expressed in the zoomed image's own coordinates
+function syncSwipeClip() {
+    if (!el.stageT1Clipper || !el.swipeStageOuter || !el.swipeStageContent) return;
+    const frame = el.swipeStageOuter.getBoundingClientRect();
+    const image = el.swipeStageContent.getBoundingClientRect();
+    if (!image.width) return;
+    const dividerX = frame.left + frame.width * state.swipePosPct / 100;
+    const pct = Math.max(0, Math.min(100, (dividerX - image.left) / image.width * 100));
+    el.stageT1Clipper.style.clipPath = `polygon(0 0, ${pct}% 0, ${pct}% 100%, 0 100%)`;
+}
+
+// Size the stage to the image's aspect ratio (non-square uploads were stretched into a square)
+function fitStageToImage() {
+    if (!el.swipeStageContent || !el.swipeStageOuter) return;
+    const [w, h] = state.resultsData?.image_size || [512, 512];
+    const frame = el.swipeStageOuter.getBoundingClientRect();
+    if (!frame.width || !frame.height) return;
+    const scale = Math.min(frame.width * 0.9 / w, frame.height * 0.9 / h);
+    el.swipeStageContent.style.width = `${Math.round(w * scale)}px`;
+    el.swipeStageContent.style.height = `${Math.round(h * scale)}px`;
+    el.swipeStageContent.style.maxWidth = 'none';
+    el.swipeStageContent.style.maxHeight = 'none';
+    syncSwipeClip();
 }
 
 // Stage Zoom & Pan Transforms
@@ -1357,6 +1383,7 @@ function applyStageTransform() {
     if (el.lblZoomLevel) {
         el.lblZoomLevel.textContent = `${Math.round(state.zoomScale * 100)}%`;
     }
+    syncSwipeClip();
 }
 
 function setZoom(scale) {
@@ -1376,11 +1403,10 @@ function setupSwipeInteractions() {
     // 1. Swipe Divider Dragging
     const handle = el.swipeDividerHandle;
     const divider = el.swipeDividerLine;
-    const stage = el.swipeStageContent;
 
     const onSwipeMove = (clientX) => {
-        if (!stage) return;
-        const rect = stage.getBoundingClientRect();
+        if (!el.swipeStageOuter) return;
+        const rect = el.swipeStageOuter.getBoundingClientRect();
         const offsetX = clientX - rect.left;
         let pct = (offsetX / rect.width) * 100;
         updateSwipeDivider(pct);
@@ -1425,8 +1451,8 @@ function setupSwipeInteractions() {
             }
         });
 
-        // Wheel Zoom
-        el.swipeStageViewport.addEventListener('wheel', (e) => {
+        // Wheel Zoom (on the whole frame, so it also works over the divider)
+        (el.swipeStageOuter || el.swipeStageViewport).addEventListener('wheel', (e) => {
             e.preventDefault();
             const delta = e.deltaY < 0 ? 0.15 : -0.15;
             setZoom(state.zoomScale + delta);
@@ -1443,6 +1469,8 @@ function setupSwipeInteractions() {
             applyStageTransform();
         }
     });
+
+    window.addEventListener('resize', fitStageToImage);
 
     window.addEventListener('mouseup', () => {
         if (state.isDraggingSwipe) {

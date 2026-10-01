@@ -981,7 +981,7 @@ body {
     border-radius: 8px;
     overflow: hidden;
     transform-origin: center center;
-    transition: transform 0.05s ease-out;
+    flex-shrink: 0;
 }
 
 /* Images inside stage */

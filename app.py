@@ -152,7 +152,7 @@ def _live_detect(params, report=None):
     """Fetch the Wayback pair for params and run the chosen engine; returns the result dict."""
     report = report or (lambda fraction, stage: None)
     start_time = time.time()
-    report(0.01, "Uydu karoları indiriliyor")
+    report(0.01, f"Uydu karoları indiriliyor ({params['grid_size']}×{params['grid_size']} karo)")
     img_t1, img_t2, bounds, gsd = live_fetcher.fetch_bitemporal_pair(
         lat=params['lat'], lon=params['lon'], zoom=LIVE_ANALYSIS_ZOOM,
         year_t1=params['year_t1'], year_t2=params['year_t2'], grid_size=params['grid_size'],
