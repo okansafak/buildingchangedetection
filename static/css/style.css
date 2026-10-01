@@ -731,6 +731,75 @@ body {
     font-family: var(--font-mono);
 }
 
+/* Change periods */
+.timeline-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0 16px;
+    font-size: 0.8rem;
+    color: #334155;
+    cursor: pointer;
+}
+
+.timeline-option input { flex: 0 0 auto; width: 16px; height: 16px; accent-color: #2563eb; }
+.step-action-bar > .btn { flex-shrink: 0; white-space: nowrap; }
+.timeline-option span { display: flex; flex-direction: column; }
+.timeline-option small { color: #64748b; font-size: 0.7rem; }
+
+.timeline-panel { margin-bottom: 16px; }
+
+.timeline-periods {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.timeline-row {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.72rem;
+}
+
+.timeline-range {
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    color: #334155;
+    font-weight: 600;
+}
+
+.timeline-bar {
+    display: flex;
+    height: 18px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #f1f5f9;
+}
+
+.timeline-bar span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.66rem;
+}
+
+.timeline-bar .seg-new { background: #10b981; }
+.timeline-bar .seg-dem { background: #ef4444; }
+.timeline-bar .seg-rebuilt { background: #f59e0b; }
+
+.building-period {
+    margin-top: 4px;
+    font-size: 0.7rem;
+    color: #475569;
+}
+
 .results-export-box {
     display: flex;
     flex-direction: column;

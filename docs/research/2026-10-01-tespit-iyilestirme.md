@@ -91,6 +91,16 @@ BONAI veri seti / LOFT yöntemi, binanın çatısını ve **çatıdan tabana kay
 - **Microsoft Global ML Building Footprints**: Türkiye için ~5.8 milyon bina. Bunlar 2014–2024 görüntülerinden çıkarılmış ve tek tarihli. "Mevcut bina" sınıflandırmasını doğrulamak veya kalite raporu üretmek için kullanılabilir; değişimi tek başına göstermez.
 - Google Open Buildings Türkiye'yi kapsamıyor (Afrika, Güney ve Güneydoğu Asya ağırlıklı). Overture, Microsoft ve OSM'yi birleştiriyor.
 
+## 7b. Ara çekimlerle değişim dönemi (uygulandı)
+
+T1 ile T2 arasındaki, gerçek çekimi farklı Wayback sürümleri de segmente ediliyor; her değişen binanın alanında her çekimin bina maskesi T1'e mi T2'ye mi benziyor (IoU) diye bakılıyor ve en az çelişkili önce/sonra ayrımı seçiliyor.
+
+- Görsel kontrol (Fikirtepe ve Örnekköy, 8'er rastgele bina): dönemlerin çoğu doğru ya da gerçek aralığı kapsayan daha geniş bir aralık. Başlıca hata: eğik çekilmiş kulelerin komşu binaların üzerine düşmesi.
+- İlk kural ("önceyi gösteren son çekim") bulanık bir çekimde (Fikirtepe 2024-02) model bina bulamayınca dönemi geç tarihe itiyordu; belirsiz karşılaştırmaları (fark < 0.1) "bilinmiyor" saymak bunu düzeltti.
+- Paralaks toleransıyla genişletilmiş örtüşme denendi: yeniden yapılan binalarda eski/yeni taban farkını da yuttu, çoğu "belirsiz" kaldı. Düz IoU kaldı.
+- 1 m'den kaba ara çekimler (ör. Ankara 2020, 1.2 m) kullanılmıyor.
+- Süre: Fikirtepe 3×3 karo, GPU, 4 ara çekimle 13 sn → ~30 sn (karolar önbellekteyken).
+
 ## 8. Denenen ama faydasız çıkanlar
 
 | Deneme | Sonuç |

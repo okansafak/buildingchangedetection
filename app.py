@@ -166,8 +166,38 @@ class LiveImageryMissing(ValueError):
     """The archive has no imagery at all for one of the dates (Turkish message)."""
 
 
+MAX_TIMELINE_RES_M = 1.0  # coarser intermediate captures (e.g. 1.2 m) do not show buildings reliably
+
+
+def _intermediate_captures(params, captures):
+    """Wayback releases between T1 and T2 whose imagery at this point is a distinct, dated capture, oldest
+    first: ([(image, placeholder mask or None)], capture dates [T1, *intermediates, T2]), or ([], None)."""
+    def date(year):
+        return (captures.get(year) or {}).get('date')
+
+    d1, d2 = date(params['year_t1']), date(params['year_t2'])
+    if not d1 or not d2:
+        return [], None
+    chosen = {}
+    for year in sorted(captures):
+        info = captures[year] or {}
+        if (params['year_t1'] < year < params['year_t2'] and info.get('date') and d1 < info['date'] < d2
+                and (info.get('resolution_m') or 0) <= MAX_TIMELINE_RES_M):
+            chosen.setdefault(info['date'], year)  # releases often reuse one capture
+    images, dates = [], [d1]
+    for capture_date, year in sorted(chosen.items()):
+        img, _, _ = live_fetcher.fetch_patch(params['lat'], params['lon'], LIVE_ANALYSIS_ZOOM,
+                                             release_id=WAYBACK_RELEASES[year]['id'], grid_size=params['grid_size'])
+        mask = placeholder_tile_mask(img)
+        if not mask.all():
+            images.append((img, mask if mask.any() else None))
+            dates.append(capture_date)
+    return (images, dates + [d2]) if images else ([], None)
+
+
 def _live_detect(params, report=None):
-    """Fetch the Wayback pair for params and run the chosen engine; returns the result dict."""
+    """Fetch the Wayback pair for params and run the chosen engine; returns the result dict.
+    With params['timeline'] (ML only) intermediate captures date every change."""
     report = report or (lambda fraction, stage: None)
     start_time = time.time()
     report(0.01, f"Uydu karoları indiriliyor ({params['grid_size']}×{params['grid_size']} karo)")
@@ -184,10 +214,22 @@ def _live_detect(params, report=None):
         n_missing = int(missing[::256, ::256].sum())
         warnings.append(f"{n_missing}/{params['grid_size'] ** 2} karo seçilen yıllardan birinde arşivde yok; "
                         "bu alanlar analiz dışı bırakıldı.")
+    timeline = params.get('timeline') and params['engine'] == 'ml'
+    if timeline:
+        report(0.02, "Ara yılların çekim tarihleri okunuyor")
+        captures = capture_infos(params['lat'], params['lon'], WAYBACK_RELEASES)
+        capture = {"t1": captures.get(params['year_t1']), "t2": captures.get(params['year_t2'])}
+        intermediates, dates = _intermediate_captures(params, captures)
+        if not intermediates:
+            warnings.append("Bu konumda iki tarih arasında farklı bir ara çekim bulunamadı; değişim dönemleri belirlenemedi.")
+    else:
+        capture = _captures(params['lat'], params['lon'], params['year_t1'], params['year_t2'])
+        intermediates, dates = [], None
     if params['engine'] == 'ml':
         tiles_ref = georef.from_bounds_wgs84(bounds, img_t2.width, img_t2.height, source="tiles")
         result = ml_detector.detect(img_t1, img_t2, georef=tiles_ref, min_area_m2=params['min_area_m2'],
-                                    mode="fast", progress=report, invalid_mask=missing if missing.any() else None)
+                                    mode="fast", progress=report, invalid_mask=missing if missing.any() else None,
+                                    intermediates=intermediates, dates=dates)
     else:
         result = detector.detect(
             img1=img_t1,
@@ -203,7 +245,7 @@ def _live_detect(params, report=None):
     result["mode"] = "live_satellite"
     result["grid_size"] = params['grid_size']
     result["years"] = {"t1": params['year_t1'], "t2": params['year_t2']}
-    result["capture"] = _captures(params['lat'], params['lon'], params['year_t1'], params['year_t2'])
+    result["capture"] = capture
     result["warnings"] = warnings
     LAST_RESULTS['latest'] = result
     return result
@@ -233,6 +275,7 @@ def run_live_detect():
         'min_area_m2': float(data.get('min_area_m2', 40.0)),
         'engine': data.get('engine', 'classic'),
         'grid_size': grid,
+        'timeline': bool(data.get('timeline', False)),
     }
 
     if params['engine'] == 'ml' and data.get('job'):
@@ -465,7 +508,9 @@ def export_csv():
     features = LAST_RESULTS['latest']['geojson'].get('features', [])
     si = StringIO()
     writer = csv.writer(si)
-    writer.writerow(["Bina_ID", "Degisim_Turu", "Degisim_Tanimi", "Alan_m2", "Cevre_m", "Guven_Skoru_Yuzde", "Enlem", "Boylam", "Piksel_X", "Piksel_Y"])
+    with_period = bool(LAST_RESULTS['latest'].get('timeline'))  # only live analyses with intermediate captures
+    writer.writerow(["Bina_ID", "Degisim_Turu", "Degisim_Tanimi", "Alan_m2", "Cevre_m", "Guven_Skoru_Yuzde", "Enlem", "Boylam", "Piksel_X", "Piksel_Y"]
+                    + (["Degisim_Donemi_Baslangic", "Degisim_Donemi_Bitis"] if with_period else []))
 
     def cell(value):
         return '' if value is None else value
@@ -485,7 +530,8 @@ def export_csv():
             centroid[1],
             centroid_px[0],
             centroid_px[1],
-        ])
+        ] + ([(props.get('change_period') or {}).get('from', ''), (props.get('change_period') or {}).get('to', '')]
+             if with_period else []))
         
     return Response(
         si.getvalue(),

@@ -17,6 +17,7 @@ from PIL import Image
 from model.change_detector import BUILDING_TYPES
 from model.object_change import classify_objects, estimate_parallax_px
 from model.segmenter import BuildingSegmenter
+from model.timeline import change_periods, period_summary
 
 Image.MAX_IMAGE_PIXELS = 250_000_000  # 8192 x 4468 aerial mosaics are legitimate input
 
@@ -130,6 +131,10 @@ def _record(b_idx, obj, georef, gsd):
     return b_info, feature
 
 
+def _on_grid(mask, w, h):
+    return cv2.resize(mask.astype(np.uint8), (w, h), interpolation=cv2.INTER_NEAREST).astype(bool)
+
+
 def _encode(ext, mat, out_dir, url_prefix, name):
     params = [cv2.IMWRITE_JPEG_QUALITY, 90] if ext == ".jpg" else []
     ok, buf = cv2.imencode(ext, mat, params)
@@ -169,21 +174,26 @@ class MLChangeDetector:
         self.segmenter = segmenter or BuildingSegmenter()
 
     def detect(self, img1, img2, georef=None, gsd=None, min_area_m2=30.0, threshold=0.5,
-               mode="fast", ground_truth=None, progress=None, out_dir=None, url_prefix="", invalid_mask=None):
+               mode="fast", ground_truth=None, progress=None, out_dir=None, url_prefix="", invalid_mask=None,
+               intermediates=None, dates=None):
         """
         img1/img2: paths or PIL images (T1 is resized onto T2's pixel grid).
         georef: GeoRef of T2's grid or None. gsd: m/px override (manual entry).
         mode: "fast" | "deep". progress(fraction 0..1, Turkish stage text).
         invalid_mask: optional H x W bool mask (T2 grid) of areas without real imagery, e.g. tiles
         missing from the archive; no building is detected there.
+        intermediates: optional [(image, invalid_mask or None)] captured between T1 and T2, oldest first,
+        with dates = labels of [T1, *intermediates, T2]: every change then gets a "change_period".
         """
         report = progress or (lambda fraction, stage: None)
         report(0.01, "Görüntüler okunuyor")
+        intermediates = list(intermediates or [])
         t1 = load_rgb(img1)
         t2 = load_rgb(img2)
         h, w = t2.shape[:2]
         if t1.shape[:2] != (h, w):
             t1 = cv2.resize(t1, (w, h), interpolation=cv2.INTER_AREA)
+        mids = [cv2.resize(load_rgb(img), (w, h), interpolation=cv2.INTER_AREA) for img, _ in intermediates]
         if gsd is None and georef is not None:
             gsd = georef.gsd_m(w, h)
 
@@ -193,6 +203,7 @@ class MLChangeDetector:
             interp = cv2.INTER_AREA if scale < 1 else cv2.INTER_CUBIC
             t1 = cv2.resize(t1, (nw, nh), interpolation=interp)
             t2 = cv2.resize(t2, (nw, nh), interpolation=interp)
+            mids = [cv2.resize(m, (nw, nh), interpolation=interp) for m in mids]
             if georef is not None:
                 georef = georef.resampled(w, h, nw, nh)
             if gsd is not None:
@@ -202,12 +213,19 @@ class MLChangeDetector:
 
         # progress counts the model's 1024 px processing sections ("bölüm"), not the 256 px map tiles ("karo")
         report(0.03, "Bina modeli hazırlanıyor")
-        p1 = self.segmenter.predict(t1, lambda d, n: report(0.05 + 0.45 * d / n, f"T1 binaları bulunuyor (bölüm {d}/{n})"))
-        p2 = self.segmenter.predict(t2, lambda d, n: report(0.50 + 0.45 * d / n, f"T2 binaları bulunuyor (bölüm {d}/{n})"))
+        share = 0.90 / (2 + len(mids))
+
+        def segment(rgb, i, name):
+            return self.segmenter.predict(
+                rgb, lambda d, n: report(0.05 + share * (i + d / n), f"{name} binaları bulunuyor (bölüm {d}/{n})"))
+
+        p1 = segment(t1, 0, "T1")
+        p2 = segment(t2, 1, "T2")
         if invalid_mask is not None:
-            invalid = cv2.resize(invalid_mask.astype(np.uint8), (w, h), interpolation=cv2.INTER_NEAREST).astype(bool)
+            invalid = _on_grid(invalid_mask, w, h)
             p1[invalid] = 0.0
             p2[invalid] = 0.0
+        mid_probs = [segment(rgb, 2 + i, f"Ara tarih {dates[i + 1]}") for i, rgb in enumerate(mids)]
 
         report(0.96, "Değişimler sınıflandırılıyor")
         min_px = max(12, int(min_area_m2 / px_gsd ** 2))
@@ -218,11 +236,21 @@ class MLChangeDetector:
                                                tolerance_px=tolerance_px)
         objects.sort(key=lambda o: (ORDER[o["type"]], -o["area_px"]))
 
+        timeline, periods = None, [None] * len(objects)
+        if mid_probs:
+            report(0.97, "Değişim dönemleri bulunuyor")
+            captures = [(p >= threshold, _on_grid(inv, w, h) if inv is not None else None)
+                        for p, (_, inv) in zip(mid_probs, intermediates)]
+            periods = change_periods(objects, p1 >= threshold, p2 >= threshold, captures, dates, tolerance_px)
+            timeline = {"dates": list(dates), **period_summary(objects, periods, dates)}
+
         buildings, features = [], []
         counts = {t: 0 for t in BUILDING_TYPES}
         areas_px = {t: 0 for t in BUILDING_TYPES}
-        for b_idx, obj in enumerate(objects, start=1):
+        for b_idx, (obj, period) in enumerate(zip(objects, periods), start=1):
             b_info, feature = _record(b_idx, obj, georef, gsd)
+            if timeline is not None:
+                b_info["change_period"] = period
             buildings.append(b_info)
             features.append(feature)
             counts[obj["type"]] += 1
@@ -268,4 +296,5 @@ class MLChangeDetector:
             },
             "overlays": render_overlays(label_mask, p1, p2, t1, t2, out_dir, url_prefix),
             "metrics": change_metrics(label_mask, ground_truth) if ground_truth is not None else None,
+            "timeline": timeline,
         }

@@ -214,6 +214,11 @@ const el = {
     imgPreviewT2: document.getElementById('img-preview-t2'),
     btnBackToStep1: document.getElementById('btn-back-to-step-1'),
     btnRunBuildingDetection: document.getElementById('btn-run-building-detection'),
+    timelineOption: document.getElementById('timeline-option'),
+    chkTimeline: document.getElementById('chk-timeline'),
+    timelinePanel: document.getElementById('timeline-panel'),
+    timelinePeriods: document.getElementById('timeline-periods'),
+    lblTimelineDates: document.getElementById('lbl-timeline-dates'),
     
     // Step 3
     btnRestartWizard: document.getElementById('btn-restart-wizard'),
@@ -1003,7 +1008,9 @@ async function handleStep1Next() {
     el.lblSwipeY2.textContent = y2;
 
     try {
-        if (state.sourceType === 'live-hotspot' || state.sourceType === 'map-click') {
+        const isLive = state.sourceType === 'live-hotspot' || state.sourceType === 'map-click';
+        if (el.timelineOption) el.timelineOption.hidden = !isLive;
+        if (isLive) {
             el.step2InfoText.textContent = isMapClick
                 ? `Haritadan seçilen koordinatın (${state.selectedCoords[0]}, ${state.selectedCoords[1]}) ${y1} ve ${y2} canlı uydu fotoğrafları getirildi.`
                 : `Seçilen bölgenin ${y1} ve ${y2} canlı uydu fotoğrafları getirildi.`;
@@ -1102,7 +1109,8 @@ async function handleRunDetection() {
 
         if (state.sourceType === 'live-hotspot' || state.sourceType === 'map-click') {
             data = await runDetectionJob(
-                { ...state.livePayload, min_area_m2: aiConf.minArea, engine: 'ml', job: true },
+                { ...state.livePayload, min_area_m2: aiConf.minArea, engine: 'ml', job: true,
+                  timeline: !!el.chkTimeline?.checked },
                 '/api/live/detect'
             );
             state.resultsData = data;
@@ -1266,6 +1274,8 @@ function renderPureImageResults(data) {
         }
     });
 
+    renderTimeline(data.timeline);
+
     // 4. Populate Left Sidebar Building Cards
     if (el.buildingItemsList) {
         el.buildingItemsList.innerHTML = '';
@@ -1292,6 +1302,7 @@ function renderPureImageResults(data) {
                     <span>Çevre: ${b.perimeter_m != null ? b.perimeter_m + ' m' : '—'}</span>
                     <span>Güven: %${b.confidence_pct}</span>
                 </div>
+                ${b.change_period ? `<div class="building-period"><i class="fa-regular fa-calendar"></i> Tahmini değişim dönemi: <strong>${formatPeriod(b.change_period)}</strong></div>` : ''}
             `;
 
             item.addEventListener('click', () => {
@@ -1312,6 +1323,35 @@ function renderPureImageResults(data) {
     fitStageToImage();
     resetStageView();
     updateSwipeDivider(50);
+}
+
+// Change periods come from the intermediate captures: "2015-08 – 2017-10" = changed between those two captures
+function formatPeriod(period) {
+    return `${period.from.slice(0, 7)} – ${period.to.slice(0, 7)}`;
+}
+
+function renderTimeline(timeline) {
+    if (!el.timelinePanel) return;
+    const u = timeline?.uncertain;
+    const uncertain = u ? u.new + u.demolished + u.rebuilt : 0;
+    const periods = (timeline?.periods || []).concat(uncertain ? [{ ...u, uncertain: true }] : []);
+    el.timelinePanel.hidden = periods.length === 0;
+    el.timelinePeriods.innerHTML = '';
+    if (!periods.length) return;
+    el.lblTimelineDates.textContent = `${timeline.dates.length} çekim tarihine göre`;
+    const max = Math.max(...periods.map(p => p.new + p.demolished + p.rebuilt));
+    periods.forEach(p => {
+        const total = p.new + p.demolished + p.rebuilt;
+        const row = document.createElement('div');
+        row.className = 'timeline-row';
+        const seg = (cls, n, title) => n ? `<span class="${cls}" style="flex:${n}" title="${n} ${title}">${n}</span>` : '';
+        row.innerHTML = `
+            <span class="timeline-range" ${p.uncertain ? 'title="Aradaki çekimlerde durum net değil; dönem birden fazla aralığa yayılıyor."' : ''}>${p.uncertain ? 'Kesinleşmeyen' : formatPeriod(p)}</span>
+            <div class="timeline-bar" style="width:max(${100 * total / max}%, ${22 * [p.new, p.demolished, p.rebuilt].filter(Boolean).length}px)">
+                ${seg('seg-new', p.new, 'yeni')}${seg('seg-dem', p.demolished, 'yıkılan')}${seg('seg-rebuilt', p.rebuilt, 'yeniden yapılan')}
+            </div>`;
+        el.timelinePeriods.appendChild(row);
+    });
 }
 
 // Focus & Zoom to a specific building
@@ -1363,6 +1403,7 @@ function showBuildingTooltip(b, event) {
             <span>Çevre: ${b.perimeter_m != null ? b.perimeter_m + ' m' : '—'}</span>
             <span>Güven: %${b.confidence_pct}</span>
         </div>
+        ${b.change_period ? `<div style="font-size:0.7rem; color:#cbd5e1; margin-top:2px;">Tahmini değişim dönemi: <strong>${formatPeriod(b.change_period)}</strong></div>` : ''}
     `;
     
     if (event && el.swipeStageContent) {
@@ -1856,6 +1897,12 @@ function setupEvents() {
     // Step 2 -> Step 3
     if (el.btnRunBuildingDetection) {
         el.btnRunBuildingDetection.addEventListener('click', handleRunDetection);
+    }
+    if (el.chkTimeline) {
+        try { el.chkTimeline.checked = localStorage.getItem('atlas_timeline') !== '0'; } catch (e) {}
+        el.chkTimeline.addEventListener('change', () => {
+            try { localStorage.setItem('atlas_timeline', el.chkTimeline.checked ? '1' : '0'); } catch (e) {}
+        });
     }
 
     // Restart Wizard

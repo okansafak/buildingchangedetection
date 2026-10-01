@@ -168,3 +168,27 @@ def test_rebuilt_buildings_are_counted_as_change():
     assert (s["rebuilt_count"], s["new_buildings_count"], s["existing_count"]) == (1, 0, 0)
     assert s["rebuilt_m2"] > 0 and s["total_changed_m2"] >= s["rebuilt_m2"]
     assert r["buildings"][0]["type_tr"] == "Yeniden Yapılan Bina"
+
+
+def test_intermediate_captures_date_every_change():
+    a, b = _pair()
+    mid = np.zeros((300, 400, 3), np.uint8)
+    mid[20:80, 20:80] = 255     # existing
+    mid[150:220, 250:350] = 255  # the new building already stands; the demolished one is already gone
+    seg = FakeSegmenter()
+    r = MLChangeDetector(seg).detect(a, b, mode="deep", intermediates=[(Image.fromarray(mid), None)],
+                                     dates=["2011-08-24", "2017-10-19", "2025-05-13"])
+    assert len(seg.sizes) == 3
+    by_type = {x["type"]: x for x in r["buildings"]}
+    assert by_type["new"]["change_period"] == {"from": "2011-08-24", "to": "2017-10-19"}
+    assert by_type["demolished"]["change_period"] == {"from": "2011-08-24", "to": "2017-10-19"}
+    assert by_type["existing"]["change_period"] is None
+    assert r["timeline"] == {"dates": ["2011-08-24", "2017-10-19", "2025-05-13"], "periods": [
+        {"from": "2011-08-24", "to": "2017-10-19", "new": 1, "demolished": 1, "rebuilt": 0}],
+        "uncertain": {"new": 0, "demolished": 0, "rebuilt": 0}}
+
+
+def test_without_intermediates_there_is_no_timeline():
+    a, b = _pair()
+    r = MLChangeDetector(FakeSegmenter()).detect(a, b, mode="deep")
+    assert r["timeline"] is None and "change_period" not in r["buildings"][0]

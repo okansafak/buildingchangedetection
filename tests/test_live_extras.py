@@ -26,24 +26,26 @@ def _building_tile():
 @pytest.fixture
 def wayback_net(monkeypatch):
     """Serves the Wayback config, metadata queries and tiles; tiles listed in `missing` return 404."""
-    state = {"missing": set(), "metadata_ok": True, "calls": []}
+    state = {"missing": set(), "metadata_ok": True, "calls": [], "built": {T2_RELEASE},
+             "config": dict(CONFIG), "capture_ms": dict(CAPTURE_MS), "resolution": {}}
     plain, building = _jpeg_bytes((60, 60, 60)), _building_tile()
 
     def fake_urlopen(req, timeout=None):
         url = req.full_url if hasattr(req, "full_url") else req
         state["calls"].append(url)
         if "waybackconfig.json" in url:
-            return FakeResponse(json.dumps(CONFIG).encode())
+            return FakeResponse(json.dumps(state["config"]).encode())
         if "/query?" in url:
             if not state["metadata_ok"]:
                 raise RuntimeError("HTTP Error 503")
             rid = url.split("metadata.example/")[1].split("/")[0]
-            attrs = {"SRC_DATE2": CAPTURE_MS[rid], "NICE_DESC": "Test Uydu", "SAMP_RES": 0.3}
+            attrs = {"SRC_DATE2": state["capture_ms"][rid], "NICE_DESC": "Test Uydu",
+                     "SAMP_RES": state["resolution"].get(rid, 0.3)}
             return FakeResponse(json.dumps({"features": [{"attributes": attrs}]}).encode())
         release, _, row, col = url.split("/tile/")[1].split("/")
         if (release, int(row), int(col)) in state["missing"]:
             raise RuntimeError("HTTP Error 404: Not Found")
-        return FakeResponse(building if release == T2_RELEASE else plain)
+        return FakeResponse(building if release in state["built"] else plain)
 
     monkeypatch.setattr(live_satellite.urllib.request, "urlopen", fake_urlopen)
     live_satellite._CAPTURE_CACHE.clear()
@@ -134,3 +136,49 @@ def test_captures_endpoint_lists_every_release(client, wayback_net):
 def test_captures_endpoint_requires_coordinates(client):
     res = client.get("/api/live/captures?lat=abc")
     assert res.status_code == 400 and "koordinat" in res.get_json()["error"]
+
+
+# ---------- change periods from intermediate captures ----------
+def _add_release(net, year, ms, resolution=0.3, built=False):
+    rid = live_satellite.WAYBACK_RELEASES[year]["id"]
+    net["config"][rid] = {"metadataLayerUrl": f"https://metadata.example/{rid}/MapServer"}
+    net["capture_ms"][rid] = ms
+    net["resolution"][rid] = resolution
+    if built:
+        net["built"].add(rid)
+    return rid
+
+
+def test_timeline_dates_changes_with_distinct_sharp_intermediate_captures(client, wayback_net):
+    _add_release(wayback_net, "2016", CAPTURE_MS[T1_RELEASE])            # same capture as 2014: skipped
+    _add_release(wayback_net, "2018", 1500000000000, resolution=1.2)    # 2017-07-14, too coarse: skipped
+    used = _add_release(wayback_net, "2020", 1580000000000, built=True)  # 2020-01-26, buildings already stand
+    result = client.post("/api/live/detect", json={"lat": LAT, "lon": LON, "engine": "ml", "timeline": True}).get_json()
+    assert result["timeline"]["dates"] == ["2011-02-06", "2020-01-26", "2025-10-15"]
+    assert result["timeline"]["periods"] == [{"from": "2011-02-06", "to": "2020-01-26", "new": 4, "demolished": 0, "rebuilt": 0}]
+    assert result["timeline"]["uncertain"] == {"new": 0, "demolished": 0, "rebuilt": 0}
+    assert {b["change_period"]["to"] for b in result["buildings"] if b["type"] == "new"} == {"2020-01-26"}
+    fetched = {url.split("/tile/")[1].split("/")[0] for url in wayback_net["calls"] if "/tile/" in url}
+    assert used in fetched and live_satellite.WAYBACK_RELEASES["2016"]["id"] not in fetched
+    assert result["capture"]["t1"]["date"] == "2011-02-06"
+
+
+def test_timeline_without_intermediate_captures_warns(client, wayback_net):
+    result = client.post("/api/live/detect", json={"lat": LAT, "lon": LON, "engine": "ml", "timeline": True}).get_json()
+    assert result["timeline"] is None and any("ara çekim" in w for w in result["warnings"])
+
+
+def test_timeline_is_off_by_default(client, wayback_net):
+    _add_release(wayback_net, "2020", 1580000000000, built=True)
+    result = client.post("/api/live/detect", json={"lat": LAT, "lon": LON, "engine": "ml"}).get_json()
+    assert result["timeline"] is None and not result["warnings"]
+
+
+def test_csv_lists_change_periods_only_for_timeline_results(client, wayback_net):
+    _add_release(wayback_net, "2020", 1580000000000, built=True)
+    client.post("/api/live/detect", json={"lat": LAT, "lon": LON, "engine": "ml", "timeline": True})
+    rows = client.get("/api/export/csv").get_data(as_text=True).splitlines()
+    assert rows[0].endswith("Degisim_Donemi_Baslangic,Degisim_Donemi_Bitis")
+    assert rows[1].endswith("2011-02-06,2020-01-26")
+    client.post("/api/live/detect", json={"lat": LAT, "lon": LON, "engine": "ml"})
+    assert "Degisim_Donemi" not in client.get("/api/export/csv").get_data(as_text=True).splitlines()[0]

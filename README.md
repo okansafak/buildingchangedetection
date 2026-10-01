@@ -15,7 +15,8 @@
   - İki tarihin binaları piksel değil **bina (nesne)** olarak eşleştirilir. Böylece eğik çekimde çatıların kayması sahte değişim üretmez; kayma toleransı her görüntü çifti için görüntüden ölçülür.
   - **Yeniden yapılan bina:** Daha önce de yapı olan bir yerde, ayak izi eskisiyle örtüşmeyen yeni bina. Örneğin birkaç evin yerine tek bir blok. Kentsel dönüşümü görünür kılan kategori budur.
   - Eksik arşiv karoları analiz dışında bırakılır ve kullanıcı uyarılır.
-  - Wayback "yılı" yalnızca arşiv tarihidir. Görüntünün **gerçek çekim tarihi** Esri meta veri servisinden okunup gösterilir.
+  - Wayback "yılı" yalnızca arşiv tarihidir. Görüntünün **gerçek çekim tarihi** Esri meta veri servisinden okunup gösterilir; yıl seçicilerde de görünür, aynı çekime düşen yıllar işaretlenir.
+  - **Tahmini değişim dönemi:** İki tarih arasındaki farklı çekimler de incelenir ve her değişen bina için değişimin hangi iki çekim arasında olduğu tahmin edilir (ör. 2017-06 – 2021-04). Sonuç panelinde dönemlere göre özet, CSV'de dönem sütunları bulunur.
 - **Hız**
   - NVIDIA GPU varsa model GPU'da çalışır (RTX 3050'de 1024 px'lik bölüm başına ~0.6 sn; CPU'da ~10 sn).
   - Büyük görüntüler için iki seçenek var: **Hızlı** (0.5× küçültme) ve **Derin analiz** (orijinal çözünürlük).

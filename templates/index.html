@@ -428,6 +428,13 @@
                             <button class="btn btn-secondary" id="btn-back-to-step-1">
                                 <i class="fa-solid fa-arrow-left"></i> 1. Adıma Dön
                             </button>
+                            <label class="timeline-option" id="timeline-option" hidden>
+                                <input type="checkbox" id="chk-timeline" checked>
+                                <span>
+                                    <strong>Değişim dönemlerini bul</strong>
+                                    <small>Aradaki yılların görüntüleri de incelenir; analiz daha uzun sürer.</small>
+                                </span>
+                            </label>
                             <button class="btn btn-success btn-lg" id="btn-run-building-detection">
                                 <i class="fa-solid fa-bolt"></i> Binaları Bul ve Değişimi Tespit Et <i class="fa-solid fa-arrow-right"></i>
                             </button>
@@ -490,6 +497,15 @@
                                         <div class="stat-pill-lbl">Toplam Değişim</div>
                                     </div>
                                 </div>
+                            </div>
+
+                            <!-- Change periods (intermediate Wayback captures) -->
+                            <div class="timeline-panel" id="timeline-panel" hidden>
+                                <div class="building-list-header">
+                                    <span>Tahmini Değişim Dönemleri:</span>
+                                    <small id="lbl-timeline-dates"></small>
+                                </div>
+                                <div class="timeline-periods" id="timeline-periods"></div>
                             </div>
 
                             <!-- Buildings List -->
