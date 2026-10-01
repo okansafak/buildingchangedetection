@@ -16,10 +16,10 @@ Bu proje, [`satellite-image-deep-learning/datasets`](https://github.com/satellit
    - **Yönlü Bina Sınıflandırması**: Çatı yansıması, kenar yoğunluğu ve spektral değişimleri inceleyerek değişimin **"Yeni Yapı"** mı yoksa **"Yıkım / Kaldırılan Bina"** mı olduğunu ayrıştırır.
    - **Morfolojik Düzenleme**: Küçük gürültüleri filtreler, çatı boşluklarını kapatır ve poligonları basitleştirir (Douglas-Peucker).
 
-3. **Hazır Benchmark Senaryoları & Özel Yükleme**:
-   - **LEVIR-CD**: Teksas kentsel yayılma, banliyö konut inşaatları (0.5m GSD).
-   - **DSIFN**: Büyük metropollerde sanayi tesisi ve toplu konut genişlemeleri (0.6m GSD).
-   - **Özel Yükleme**: Kullanıcının kendi yükleyeceği $T_1$ ve $T_2$ uydu görüntülerini işleme ve haritada istenen koordinata yerleştirme imkanı.
+3. **Hazır Bölgeler, Harita Seçimi & Özel Yükleme**:
+   - **Hazır bölgeler**: Austin Pflugerville ve Dubai Hills Estate (Esri Wayback 2014 → 2026).
+   - **Haritadan seçim**: Haritada tıklanan noktanın çevresinde, kenar uzunluğu metre olarak girilen alan (1–8 karo).
+   - **Özel Yükleme**: Kendi $T_1$/$T_2$ görüntüleriniz; GeoTIFF, world file veya elle girilen konumla georeferanslı ya da georeferanssız.
 
 4. **Metrikler & CBS Dışa Aktarma (Export)**:
    - Toplam Değişen Alan ($m^2$ ve Hektar), Yeni Bina Sayısı, Yıkılan Bina Sayısı.
@@ -58,9 +58,7 @@ d:\code\changedetection\
 │   │   └── style.css           # Modern koyu temalı GIS arayüz stilleri
 │   ├── js\
 │   │   └── app.js              # Leaflet harita yönetimi, API çağrıları & GeoJSON
-│   └── samples\                # LEVIR-CD & DSIFN örnek uydu görüntü çiftleri
 ├── templates\
 │   └── index.html              # Kontrol paneli ve harita gösterge paneli
-├── download_samples.py         # Örnek veri setlerini indirme betiği
 └── README.md
 ```

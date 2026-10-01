@@ -18,46 +18,6 @@ WAYBACK_RELEASES = {
 
 # Famous rapid urban change hotspots worldwide
 LIVE_HOTSPOTS = {
-    "istanbul_basaksehir": {
-        "id": "istanbul_basaksehir",
-        "title": "İstanbul - Başakşehir & Kayaşehir (Kentsel Büyüme)",
-        "lat": 41.1070,
-        "lon": 28.7900,
-        "zoom": 17,
-        "year_t1": "2014",
-        "year_t2": "2026",
-        "desc": "Son 12 yılda boş tarım ve otlak arazilerinden devasa toplu konut bloklarına ve şehir hastanesine dönüşüm."
-    },
-    "istanbul_fikirtepe": {
-        "id": "istanbul_fikirtepe",
-        "title": "İstanbul - Fikirtepe (Kentsel Dönüşüm & Gökdelenler)",
-        "lat": 40.9902,
-        "lon": 29.0520,
-        "zoom": 17,
-        "year_t1": "2014",
-        "year_t2": "2026",
-        "desc": "Eski gecekondu ve alçak katlı binaların tamamen yıkılarak yüksek katlı modern rezidans kulelerine dönüşümü."
-    },
-    "ankara_incek": {
-        "id": "ankara_incek",
-        "title": "Ankara - İncek & Çayyolu (Yeni Konut Alanları)",
-        "lat": 39.8145,
-        "lon": 32.7150,
-        "zoom": 17,
-        "year_t1": "2014",
-        "year_t2": "2026",
-        "desc": "Başkentin güneybatı gelişim koridorunda hızla artan villa siteleri, okullar ve rezidanslar."
-    },
-    "izmir_bayrakli": {
-        "id": "izmir_bayrakli",
-        "title": "İzmir - Bayraklı & Yeni Kent Merkezi",
-        "lat": 38.4550,
-        "lon": 27.1750,
-        "zoom": 17,
-        "year_t1": "2014",
-        "year_t2": "2026",
-        "desc": "Liman arkasındaki eski sanayi parsellerinin yıkılıp yerine gökdelenlerin ve plazaların inşa edilmesi."
-    },
     "austin_pflugerville": {
         "id": "austin_pflugerville",
         "title": "Austin, Teksas - Pflugerville Yeni Konut Siteleri",

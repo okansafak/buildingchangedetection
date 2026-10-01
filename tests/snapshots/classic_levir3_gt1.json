@@ -195,10 +195,6 @@
    "type_tr": "Yıkılan / Kaldırılan Bina"
   }
  ],
- "center": [
-  29.7604,
-  -95.3698
- ],
  "geojson": {
   "features": [
    {
@@ -554,7 +550,6 @@
   "t1_png_base64": "2cd2b555a2e3bb85347c723e9e82d95cf180ff882489df9a16c4c440a6f91278",
   "t2_png_base64": "0541ba47778883c924123f0f3e56285be6691c32fc524eb3cde384017f5cafc9"
  },
- "scenario_id": "levir3",
  "stats": {
   "demolished_count": 2,
   "demolished_m2": 2415.9,

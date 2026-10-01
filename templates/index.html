@@ -49,10 +49,6 @@
                     <a href="#" class="menu-item active" id="menu-btn-projects">
                         <i class="fa-regular fa-folder-open"></i> Projects
                     </a>
-                    <a href="#" class="menu-item" id="menu-btn-datasets">
-                        <i class="fa-solid fa-layer-group"></i> Datasets
-                        <span class="tag-pill">LEVIR-CD</span>
-                    </a>
                     <a href="#" class="menu-item" id="menu-btn-settings">
                         <i class="fa-solid fa-gear"></i> Settings
                     </a>
@@ -259,11 +255,6 @@
                                 <p>Bilgisayarınızdaki önceki (T1) ve sonraki (T2) fotoğrafları yükleyin</p>
                             </div>
 
-                            <div class="source-card" data-source="benchmark-set">
-                                <div class="source-icon"><i class="fa-solid fa-database"></i></div>
-                                <h3>LEVIR-CD Benchmark</h3>
-                                <p>Literatür altın standart test çiftleriyle yapay zekayı test edin</p>
-                            </div>
                         </div>
 
                         <!-- Panel 1: Live Hotspot Details -->
@@ -271,18 +262,14 @@
                             <div class="form-group">
                                 <label><i class="fa-solid fa-location-dot"></i> Kentsel Gelişim Bölgesi:</label>
                                 <select id="select-hotspot" class="form-control">
-                                    <option value="istanbul_basaksehir">🇹🇷 İstanbul - Başakşehir & Kayaşehir (Yeni Şehirleşme & Toplu Konutlar)</option>
-                                    <option value="istanbul_fikirtepe">🇹🇷 İstanbul - Fikirtepe (Kentsel Dönüşüm & Gökdelenler)</option>
-                                    <option value="ankara_incek">🇹🇷 Ankara - İncek & Çayyolu (Yeni Konut Alanları & Siteler)</option>
-                                    <option value="izmir_bayrakli">🇹🇷 İzmir - Bayraklı & Yeni Kent Merkezi (Plazalar & Dönüşüm)</option>
                                     <option value="austin_pflugerville">🇺🇸 Austin, Teksas - Pflugerville (Yeni Konut Siteleri)</option>
                                     <option value="dubai_hills">🇦🇪 Dubai - Dubai Hills Estate (Çölden Villa Kentine)</option>
                                 </select>
                             </div>
                             
                             <div class="hotspot-summary-card">
-                                <div class="hotspot-badge" id="lbl-hotspot-name">İstanbul - Başakşehir & Kayaşehir</div>
-                                <p id="lbl-hotspot-desc">Son 12 yılda boş tarım ve otlak arazilerinden devasa toplu konut bloklarına ve şehir hastanesine dönüşüm.</p>
+                                <div class="hotspot-badge" id="lbl-hotspot-name">Austin, Teksas - Pflugerville Yeni Konut Siteleri</div>
+                                <p id="lbl-hotspot-desc">Austin'in kuzey banliyösünde boş parsellerin tek katlı müstakil konut sokaklarıyla dolması.</p>
                             </div>
 
                             <div class="time-select-row">
@@ -321,10 +308,8 @@
                                     Seçilen Koordinat: <strong id="lbl-selected-coords">41.1070, 28.7900</strong>
                                 </div>
                                 <div style="display: flex; gap: 6px;">
-                                    <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="41.1070" data-lon="28.7900" data-zoom="17">Başakşehir</button>
-                                    <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="40.9900" data-lon="29.0520" data-zoom="17">Fikirtepe</button>
-                                    <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="39.8450" data-lon="32.7200" data-zoom="17">Ankara İncek</button>
-                                    <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="38.4550" data-lon="27.1750" data-zoom="17">İzmir Bayraklı</button>
+                                    <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="30.4750" data-lon="-97.6250" data-zoom="16">Austin Pflugerville</button>
+                                    <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="25.1030" data-lon="55.2480" data-zoom="16">Dubai Hills</button>
                                 </div>
                             </div>
 
@@ -400,19 +385,6 @@
                                     <span><strong>Derin analiz</strong> — orijinal çözünürlük, en doğru sonuç; 8192 px görüntüde ~12 dk</span>
                                 </label>
                             </div>
-                        </div>
-
-                        <!-- Panel 3: Benchmark Dataset -->
-                        <div class="source-details-panel" id="panel-benchmark-set" style="display:none;">
-                            <label><i class="fa-solid fa-database"></i> LEVIR-CD & DSIFN Örnekleri:</label>
-                            <select id="select-benchmark" class="form-control">
-                                <option value="levir1">LEVIR-CD #1: Teksas Müstakil Konut Projesi (0.5m GSD)</option>
-                                <option value="levir2">LEVIR-CD #2: Banliyö Konut Yayılması (0.5m GSD)</option>
-                                <option value="levir3">LEVIR-CD #3: Yoğun Yapılaşma ve Çatı Eklentileri</option>
-                                <option value="dsifn1">DSIFN #1: Sanayi ve Ticari Tesis İnşaatı (0.6m GSD)</option>
-                                <option value="dsifn2">DSIFN #2: Metropol Kentsel Altyapı Blokları</option>
-                                <option value="yerel_basaksehir">Yerel örnek: Başakşehir 2020 → 2026 (georeferanssız)</option>
-                            </select>
                         </div>
 
                         <!-- Step 1 Bottom Button -->
@@ -673,56 +645,6 @@
             </div>
             <div class="atlas-modal-body">
                 <div class="discover-grid">
-                    <div class="discover-card" data-local-sample="yerel_basaksehir">
-                        <div class="discover-badge">Yerel Veri</div>
-                        <h4>🇹🇷 Başakşehir Ortofoto (Örnek Veri)</h4>
-                        <p>sampla_data klasöründeki 2020 ve 2026 görüntüleri: georeferanssız, piksel bazında yapay zeka analizi (hızlı mod).</p>
-                        <div class="discover-footer">
-                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2020 → 2026</span>
-                            <button class="btn btn-primary btn-sm btn-local-sample">Analizi Başlat</button>
-                        </div>
-                    </div>
-
-                    <div class="discover-card" data-hotspot="istanbul_basaksehir">
-                        <div class="discover-badge">İstanbul</div>
-                        <h4>🇹🇷 Başakşehir & Kayaşehir</h4>
-                        <p>Son 12 yılda boş otlak arazilerinden dev toplu konut bloklarına ve şehir hastanesine dönüşüm.</p>
-                        <div class="discover-footer">
-                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2014 → 2026</span>
-                            <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
-                        </div>
-                    </div>
-
-                    <div class="discover-card" data-hotspot="istanbul_fikirtepe">
-                        <div class="discover-badge">İstanbul</div>
-                        <h4>🇹🇷 Kadıköy - Fikirtepe</h4>
-                        <p>Eski gecekondulardan ultra lüks rezidans kulelerine ve yeni ulaşım akslarına kentsel dönüşüm.</p>
-                        <div class="discover-footer">
-                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2014 → 2026</span>
-                            <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
-                        </div>
-                    </div>
-
-                    <div class="discover-card" data-hotspot="ankara_incek">
-                        <div class="discover-badge">Ankara</div>
-                        <h4>🇹🇷 İncek & Çayyolu</h4>
-                        <p>Gölbaşı ve İncek aksında villalar, yeni site projeleri ve kamu kampüsleri genişlemesi.</p>
-                        <div class="discover-footer">
-                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2014 → 2026</span>
-                            <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
-                        </div>
-                    </div>
-
-                    <div class="discover-card" data-hotspot="izmir_bayrakli">
-                        <div class="discover-badge">İzmir</div>
-                        <h4>🇹🇷 Bayraklı Yeni Kent Merkezi</h4>
-                        <p>İzmir körfezi kıyısında gökdelenler, plazalar ve adliye çevresi yeni yapılaşma.</p>
-                        <div class="discover-footer">
-                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2014 → 2026</span>
-                            <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
-                        </div>
-                    </div>
-
                     <div class="discover-card" data-hotspot="austin_pflugerville">
                         <div class="discover-badge">ABD</div>
                         <h4>🇺🇸 Austin, Teksas - Pflugerville</h4>
@@ -741,59 +663,6 @@
                             <span class="discover-years"><i class="fa-regular fa-clock"></i> 2014 → 2026</span>
                             <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ======================================================== -->
-    <!-- MODAL 2: DATASETS (LEVIR-CD & DSIFN BENCHMARK)            -->
-    <!-- ======================================================== -->
-    <div class="atlas-modal-backdrop" id="modal-datasets">
-        <div class="atlas-modal-card modal-md">
-            <div class="atlas-modal-header">
-                <div class="modal-title-wrap">
-                    <i class="fa-solid fa-layer-group modal-title-icon text-green"></i>
-                    <div>
-                        <h3>Literatür Benchmark Verisetleri (LEVIR-CD)</h3>
-                        <p>Yapay zeka modellerini test etmek için standart çiftler.</p>
-                    </div>
-                </div>
-                <button class="btn-modal-close" data-close="modal-datasets"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="atlas-modal-body">
-                <div class="benchmark-modal-list">
-                    <div class="benchmark-modal-row" data-benchmark="levir1">
-                        <div>
-                            <strong>LEVIR-CD #1: Teksas Müstakil Konut Projesi</strong>
-                            <p>0.5m GSD yüksek çözünürlüklü konut inşaatı ve temel atımları.</p>
-                        </div>
-                        <button class="btn btn-primary btn-sm btn-run-benchmark">Test Et</button>
-                    </div>
-
-                    <div class="benchmark-modal-row" data-benchmark="levir2">
-                        <div>
-                            <strong>LEVIR-CD #2: Banliyö Konut Yayılması</strong>
-                            <p>0.5m GSD müstakil yerleşim ve çatı eklentileri değişimi.</p>
-                        </div>
-                        <button class="btn btn-primary btn-sm btn-run-benchmark">Test Et</button>
-                    </div>
-
-                    <div class="benchmark-modal-row" data-benchmark="levir3">
-                        <div>
-                            <strong>LEVIR-CD #3: Yoğun Yapılaşma ve Ticari Binalar</strong>
-                            <p>Büyük kütleli yapılar ve otopark dönüşümleri.</p>
-                        </div>
-                        <button class="btn btn-primary btn-sm btn-run-benchmark">Test Et</button>
-                    </div>
-
-                    <div class="benchmark-modal-row" data-benchmark="dsifn1">
-                        <div>
-                            <strong>DSIFN #1: Sanayi ve Ticari Tesisler</strong>
-                            <p>0.6m GSD fabrika hangarları ve lojistik merkez gelişimi.</p>
-                        </div>
-                        <button class="btn btn-primary btn-sm btn-run-benchmark">Test Et</button>
                     </div>
                 </div>
             </div>

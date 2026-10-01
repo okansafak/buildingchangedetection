@@ -6,10 +6,6 @@
   116.4082993438641
  ],
  "buildings": [],
- "center": [
-  39.9042,
-  116.4074
- ],
  "geojson": {
   "features": [],
   "type": "FeatureCollection"
@@ -24,7 +20,6 @@
   "t1_png_base64": "f0f000377c7fb75a2029aec3865f7689b27d443172bdc235fec6e2483eaf7cd4",
   "t2_png_base64": "c1c24e5ebd1e55c1d764ef46f744effee7b0abc6d1766f4cef6c4bfe9e3a0712"
  },
- "scenario_id": "dsifn2",
  "stats": {
   "demolished_count": 0,
   "demolished_m2": 0.0,

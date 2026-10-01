@@ -1,0 +1,42 @@
+{
+ "bounds": [
+  39.932825080848005,
+  32.858950227140284,
+  39.93397491915199,
+  32.86044977285971
+ ],
+ "buildings": [],
+ "center": [
+  39.9334,
+  32.8597
+ ],
+ "geojson": {
+  "features": [],
+  "type": "FeatureCollection"
+ },
+ "image_size": [
+  256,
+  256
+ ],
+ "overlays": {
+  "heatmap_png_base64": "6ddc49d4ac34fd50771c974a3fbfe04de5945f9d48326f3ef89e777749b348db",
+  "mask_png_base64": "3d6832fcb1f334381387017bbadaf2b1c32a4c6708f58245a4c4f9f85ccb7103",
+  "t1_png_base64": "f23f2929d5712971b5b9bee512f65367bba21ff5d256ed16d8ce077c0c6869ad",
+  "t2_png_base64": "d678e7fe54711d8a7de373e3f5d37840b5e8784e353667c290e519536e1b0da0"
+ },
+ "scenario_id": "custom",
+ "stats": {
+  "demolished_count": 0,
+  "demolished_m2": 0.0,
+  "existing_count": 0,
+  "existing_m2": 0.0,
+  "gsd": 0.5,
+  "new_buildings_count": 0,
+  "new_buildings_m2": 0.0,
+  "patch_dimensions": "256x256 px (128m x 128m)",
+  "total_buildings": 0,
+  "total_changed_hectares": 0.0,
+  "total_changed_m2": 0.0
+ },
+ "success": true
+}

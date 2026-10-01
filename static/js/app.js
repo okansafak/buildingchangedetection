@@ -88,14 +88,13 @@ const state = {
     
     // Live Hotspots & Map Selection (Step 1)
     hotspots: {},
-    currentHotspotId: 'istanbul_basaksehir',
-    selectedCoords: [41.1070, 28.7900],
+    currentHotspotId: 'austin_pflugerville',
+    selectedCoords: [30.4750, -97.6250],
     selectedZoom: 17,
     selectMap: null,
     selectMarker: null,
     
-    // Benchmarks & Uploads
-    currentBenchmarkId: 'levir1',
+    // Uploads
     customFiles: null,
     
     // Results & Swipe Stage
@@ -146,14 +145,12 @@ const el = {
     // Sidebar Menu & Collections
     menuBtnDiscover: document.getElementById('menu-btn-discover'),
     menuBtnProjects: document.getElementById('menu-btn-projects'),
-    menuBtnDatasets: document.getElementById('menu-btn-datasets'),
     menuBtnSettings: document.getElementById('menu-btn-settings'),
     collectionsList: document.getElementById('collections-list'),
     btnAddCollection: document.getElementById('btn-add-collection'),
 
     // Modals
     modalDiscover: document.getElementById('modal-discover'),
-    modalDatasets: document.getElementById('modal-datasets'),
     modalSettings: document.getElementById('modal-settings'),
     modalCollection: document.getElementById('modal-collection'),
 
@@ -193,8 +190,7 @@ const el = {
     panels: {
         'live-hotspot': document.getElementById('panel-live-hotspot'),
         'map-click': document.getElementById('panel-map-click'),
-        'custom-upload': document.getElementById('panel-custom-upload'),
-        'benchmark-set': document.getElementById('panel-benchmark-set')
+        'custom-upload': document.getElementById('panel-custom-upload')
     },
     selectHotspot: document.getElementById('select-hotspot'),
     lblHotspotName: document.getElementById('lbl-hotspot-name'),
@@ -217,7 +213,6 @@ const el = {
     inputGeorefWest: document.getElementById('input-georef-west'),
     inputGeorefNorth: document.getElementById('input-georef-north'),
     inputGeorefEast: document.getElementById('input-georef-east'),
-    selectBenchmark: document.getElementById('select-benchmark'),
     btnGotoStep2: document.getElementById('btn-goto-step-2'),
     
     // Step 2
@@ -643,8 +638,6 @@ function getLocationTitle() {
         return h ? h.title.split('(')[0].trim() : 'Canlı Uydu Bölgesi';
     } else if (state.sourceType === 'map-click') {
         return `Harita [${state.selectedCoords[0].toFixed(2)}, ${state.selectedCoords[1].toFixed(2)}]`;
-    } else if (state.sourceType === 'benchmark-set') {
-        return `LEVIR-CD (${state.currentBenchmarkId})`;
     }
     return 'Özel Yükleme';
 }
@@ -985,23 +978,6 @@ async function handleStep1Next() {
                 showToast('Uydu verisi getirilemedi: ' + (data.error || ''), 'error');
             }
 
-        } else if (state.sourceType === 'benchmark-set') {
-            const scId = el.selectBenchmark.value;
-            state.currentBenchmarkId = scId;
-            el.lblPreviewT1.textContent = "T1 (Önce)";
-            el.lblPreviewT2.textContent = "T2 (Sonra)";
-            el.lblSwipeY1.textContent = "T1 (Önce)";
-            el.lblSwipeY2.textContent = "T2 (Sonra)";
-            el.badgeYearT1.innerHTML = `<i class="fa-solid fa-backward"></i> Solda 1. Görüntü: T1`;
-            el.badgeYearT2.innerHTML = `<i class="fa-solid fa-forward"></i> Sağda 2. Görüntü: T2`;
-            el.step2InfoText.textContent = scId.startsWith('yerel_')
-                ? 'Yerel örnek veri (sampla_data) hazırlandı. Görüntüler georeferanssız: sonuçlar piksel cinsinden gösterilecek.'
-                : `LEVIR-CD Benchmark seti (${scId}) çifti hazırlandı.`;
-            el.imgPreviewT1.src = `/api/samples/${scId}/A`;
-            el.imgPreviewT2.src = `/api/samples/${scId}/B`;
-            state.resultsData = null;
-            goToStep(2);
-
         } else if (state.sourceType === 'custom-upload') {
             if (!el.inputUploadT1.files[0] || !el.inputUploadT2.files[0]) {
                 showToast('Lütfen hem Zaman 1 (T1) hem de Zaman 2 (T2) fotoğraflarını seçin.', 'warning');
@@ -1066,15 +1042,7 @@ async function handleRunDetection() {
             );
             state.resultsData = data;
         } else {
-            if (state.sourceType === 'benchmark-set') {
-                data = await runDetectionJob({
-                    engine: 'ml',
-                    scenario_id: state.currentBenchmarkId,
-                    min_area_m2: aiConf.minArea,
-                    analysis_mode: 'fast',
-                    use_gt: true
-                });
-            } else if (state.sourceType === 'custom-upload') {
+            if (state.sourceType === 'custom-upload') {
                 data = await runDetectionJob({
                     engine: 'ml',
                     scenario_id: 'custom',
@@ -1095,10 +1063,7 @@ async function handleRunDetection() {
 
         // 1. Switch to Step 3
         goToStep(3);
-        if (data.metrics) {
-            const m = data.metrics;
-            showToast(`Etiketle karşılaştırma — F1: ${m.f1} · IoU: ${m.iou} · Kesinlik: ${m.precision} · Duyarlılık: ${m.recall}`, 'success', 9000);
-        } else if (data.engine === 'ml' && !data.georef && state.sourceType === 'custom-upload') {
+        if (data.engine === 'ml' && !data.georef && state.sourceType === 'custom-upload') {
             showToast('Görüntüler georeferanssız: alanlar ve dışa aktarılan koordinatlar piksel cinsindendir.', 'info', 7000);
         }
 
@@ -1652,12 +1617,6 @@ function initModals() {
             openModal('modal-discover');
         });
     }
-    if (el.menuBtnDatasets) {
-        el.menuBtnDatasets.addEventListener('click', (e) => {
-            e.preventDefault();
-            openModal('modal-datasets');
-        });
-    }
     if (el.menuBtnSettings) {
         el.menuBtnSettings.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1699,36 +1658,6 @@ function initModals() {
             if (el.selectHotspot) {
                 el.selectHotspot.value = hotspotId;
                 updateHotspotCard(hotspotId);
-            }
-            handleStep1Next();
-        });
-    });
-
-    // Discover: local sample pairs (sampla_data/) run through the benchmark flow without a label
-    document.querySelectorAll('.btn-local-sample').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const sampleId = btn.closest('.discover-card').getAttribute('data-local-sample');
-            closeModal('modal-discover');
-            createNewProject('benchmark-set');
-            state.currentBenchmarkId = sampleId;
-            if (el.selectBenchmark) el.selectBenchmark.value = sampleId;
-            handleStep1Next();
-        });
-    });
-
-    // Datasets quick test buttons
-    document.querySelectorAll('.btn-run-benchmark').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const row = btn.closest('.benchmark-modal-row');
-            const benchmarkId = row.getAttribute('data-benchmark');
-            closeModal('modal-datasets');
-            
-            createNewProject('benchmark-set');
-            state.currentBenchmarkId = benchmarkId;
-            if (el.selectBenchmark) {
-                el.selectBenchmark.value = benchmarkId;
             }
             handleStep1Next();
         });

@@ -16,7 +16,6 @@ from model.ml_detector import MLChangeDetector, load_rgb
 from model.segmenter import ModelUnavailable
 from model.jobs import JobRunner
 from model import geo, georef
-from model.scenarios import SCENARIOS, LOCAL_SAMPLES
 
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -71,24 +70,6 @@ def index():
 @app.route('/favicon.ico')
 def favicon():
     return Response(status=204)
-
-@app.route('/api/scenarios', methods=['GET'])
-def get_scenarios():
-    items = []
-    for sid, sc in SCENARIOS.items():
-        items.append({
-            "id": sc["id"],
-            "title": sc["title"],
-            "dataset": sc["dataset"],
-            "resolution": sc["resolution"],
-            "description": sc["description"],
-            "center": sc["center"],
-            "gsd": sc["gsd"],
-            "zoom": sc["zoom"],
-            "thumb_A": f"/{sc['path_A']}",
-            "thumb_B": f"/{sc['path_B']}"
-        })
-    return jsonify(items)
 
 @app.route('/api/live/hotspots', methods=['GET'])
 def get_live_hotspots():
@@ -235,22 +216,14 @@ def run_detect():
     data = request.json or {}
     if data.get('engine', 'classic') == 'ml':
         return _run_detect_ml(data)
-    scenario_id = data.get('scenario_id', 'levir1')
+    scenario_id = data.get('scenario_id', 'custom')
     threshold = float(data.get('threshold', 0.45))
     min_area_m2 = float(data.get('min_area_m2', 30.0))
     gsd = float(data.get('gsd', 0.5))
-    use_gt = bool(data.get('use_gt', True))
 
     custom_center = data.get('center') # [lat, lon]
 
-    if scenario_id in SCENARIOS:
-        sc = SCENARIOS[scenario_id]
-        path_A = os.path.join(app.root_path, sc['path_A'])
-        path_B = os.path.join(app.root_path, sc['path_B'])
-        path_label = os.path.join(app.root_path, sc['path_label']) if use_gt else None
-        center = custom_center if custom_center else sc['center']
-        gsd = sc.get('gsd', gsd)
-    elif scenario_id == 'custom':
+    if scenario_id == 'custom':
         path_A = _uploaded_path(data.get('path_A'))
         path_B = _uploaded_path(data.get('path_B'))
         path_label = None
@@ -260,7 +233,7 @@ def run_detect():
     else:
         return jsonify({"success": False, "error": f"Bilinmeyen senaryo: {scenario_id}"}), 404
 
-    # Calculate geographic bounds around center (bundled samples are all 256x256)
+    # Classic engine: bounds of a 256x256 patch around center (legacy behaviour, pinned by snapshot tests)
     lat, lon = center[0], center[1]
     bounds = geo.bounds_from_center(lat, lon, 256, 256, gsd)
 
@@ -308,23 +281,13 @@ def _resolve_georef(path_A, path_B, manual):
 
 def _run_detect_ml(data):
     """Validates the request, then runs MLChangeDetector as a background job (202 + job_id)."""
-    scenario_id = data.get('scenario_id', 'levir1')
+    scenario_id = data.get('scenario_id', 'custom')
     min_area_m2 = float(data.get('min_area_m2', 30.0))
     mode = data.get('analysis_mode', 'fast')
     if mode not in ('fast', 'deep'):
         return jsonify({"success": False, "error": f"Bilinmeyen analiz modu: {mode}"}), 400
-    pair_ref, gsd, path_label = None, None, None
 
-    if scenario_id in SCENARIOS or scenario_id in LOCAL_SAMPLES:
-        sc = SCENARIOS.get(scenario_id) or LOCAL_SAMPLES[scenario_id]
-        path_A = os.path.join(app.root_path, sc['path_A'])
-        path_B = os.path.join(app.root_path, sc['path_B'])
-        if not (os.path.isfile(path_A) and os.path.isfile(path_B)):
-            return jsonify({"success": False, "error": f"Örnek görüntüler bulunamadı: {sc['path_A']}, {sc['path_B']}"}), 404
-        if sc.get('path_label') and data.get('use_gt', True):
-            path_label = os.path.join(app.root_path, sc['path_label'])  # scored against, never blended in
-        gsd = sc.get('gsd')  # benchmark centres are fictional: known scale, no georeference
-    elif scenario_id == 'custom':
+    if scenario_id == 'custom':
         path_A = _uploaded_path(data.get('path_A'))
         path_B = _uploaded_path(data.get('path_B'))
         if not path_A or not path_B:
@@ -344,7 +307,7 @@ def _run_detect_ml(data):
         try:
             result = ml_detector.detect(
                 path_A, path_B, georef=pair_ref, gsd=gsd, min_area_m2=min_area_m2, mode=mode,
-                ground_truth=path_label, progress=report,
+                progress=report,
                 out_dir=out_dir, url_prefix=f"/static/results/{run_id}",
             )
         except ModelUnavailable as e:
@@ -370,17 +333,6 @@ def get_job(job_id):
         "result": job["result"] if job["status"] == "done" else None,
         "error": job["error"],
     })
-
-
-@app.route('/api/samples/<sample_id>/<which>', methods=['GET'])
-def sample_image(sample_id, which):
-    """T1 (A) / T2 (B) image of a bundled benchmark or a local sample, for the step-2 preview."""
-    sc = SCENARIOS.get(sample_id) or LOCAL_SAMPLES.get(sample_id)
-    key = {"A": "path_A", "B": "path_B"}.get(which)
-    path = os.path.join(app.root_path, sc[key]) if sc and key else None
-    if not path or not os.path.isfile(path):
-        return jsonify({"success": False, "error": "Örnek görüntü bulunamadı."}), 404
-    return send_file(path)
 
 
 def _preview_url(path, fname):

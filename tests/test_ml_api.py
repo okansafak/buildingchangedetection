@@ -172,40 +172,18 @@ def test_custom_paths_outside_upload_folder_are_rejected(client):
     assert res.status_code == 400
 
 
-def test_benchmark_ml_scores_against_label_without_blending(client):
-    _, body = _detect_ml(client, scenario_id="levir1", use_gt=True)
-    result = _job(client, body["job_id"])["result"]
-    assert set(result["metrics"]) == {"precision", "recall", "f1", "iou"}
-    assert result["bounds"] is None and result["stats"]["gsd"] == 0.5
-    _, body = _detect_ml(client, scenario_id="levir1", use_gt=False)
-    assert _job(client, body["job_id"])["result"]["metrics"] is None
-
-
 def test_ml_request_errors(client):
-    res, body = _detect_ml(client, scenario_id="levir1", analysis_mode="turbo")
+    res, body = _detect_ml(client, scenario_id="custom", analysis_mode="turbo")
     assert res.status_code == 400 and "analiz modu" in body["error"]
     res, body = _detect_ml(client, scenario_id="nope")
     assert res.status_code == 404
     assert client.get("/api/jobs/yok").status_code == 404
 
 
-def test_local_sample_missing_files_is_404(client, app_module, monkeypatch):
-    monkeypatch.setitem(app_module.LOCAL_SAMPLES, "yerel_test", {
-        "id": "yerel_test", "title": "t", "path_A": "sampla_data/yok_A.jpg", "path_B": "sampla_data/yok_B.jpg"})
-    res, body = _detect_ml(client, scenario_id="yerel_test")
-    assert res.status_code == 404 and "bulunamadı" in body["error"]
-    assert client.get("/api/samples/yerel_test/A").status_code == 404
-
-
-def test_sample_image_route(client):
-    res = client.get("/api/samples/levir1/A")
-    assert res.status_code == 200 and res.mimetype == "image/png"
-    assert client.get("/api/samples/levir1/C").status_code == 404
-
-
 def test_model_download_failure_is_reported_in_turkish(client, app_module, monkeypatch):
     monkeypatch.setattr(app_module, "ml_detector", MLChangeDetector(OfflineSegmenter()))
-    _, body = _detect_ml(client, scenario_id="levir1")
+    _, up = _upload(client)
+    _, body = _detect_ml(client, scenario_id="custom", path_A=up["path_A"], path_B=up["path_B"])
     job = _job(client, body["job_id"])
     assert job["status"] == "error" and "Yapay zeka modeli yüklenemedi" in job["error"]
 

@@ -1,8 +1,10 @@
 import json
 
+from helpers import detect_classic
 
-def _detect(client, scenario_id):
-    res = client.post("/api/detect", json={"scenario_id": scenario_id, "use_gt": True})
+
+def _detect(client, pair_id):
+    res = detect_classic(client, pair_id)
     assert res.status_code == 200
     return res.get_json()
 
@@ -11,8 +13,8 @@ def _project_payload(result, name="Test Projesi"):
     return {
         "name": name,
         "description": "Karakterizasyon testi",
-        "source_type": "benchmark-set",
-        "location_name": "LEVIR-CD (levir2)",
+        "source_type": "custom-upload",
+        "location_name": "Yüklenen görüntüler",
         "year_t1": "2014",
         "year_t2": "2026",
         "coords": result["center"],

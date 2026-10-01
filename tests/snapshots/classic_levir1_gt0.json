@@ -383,10 +383,6 @@
    "type_tr": "Yeni Eklenen Bina"
   }
  ],
- "center": [
-  30.275,
-  -97.74
- ],
  "geojson": {
   "features": [
    {
@@ -1091,7 +1087,6 @@
   "t1_png_base64": "6c7f94e56377885ae4d26cc442f2b6bb9f502ad957c90e59d40f05906317f438",
   "t2_png_base64": "dd7cf2d13b4f94f6284b58821b1a8818e45108b63e5fd55206a68be4bab387d0"
  },
- "scenario_id": "levir1",
  "stats": {
   "demolished_count": 3,
   "demolished_m2": 274.8,

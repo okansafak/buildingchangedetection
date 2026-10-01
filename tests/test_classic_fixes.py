@@ -5,11 +5,13 @@ import io
 import numpy as np
 from PIL import Image
 
-from model.change_detector import BUILDING_TYPES
+from helpers import detect_classic, sample_path
+from model.change_detector import BUILDING_TYPES, BuildingChangeDetector
 
 
-def test_classic_mask_png_keeps_rgb_order(client):
-    result = client.post("/api/detect", json={"scenario_id": "levir1", "use_gt": True}).get_json()
+def test_classic_mask_png_keeps_rgb_order():
+    result = BuildingChangeDetector().detect(
+        sample_path("levir1", "A"), sample_path("levir1", "B"), ground_truth=sample_path("levir1", "label"), gsd=0.5)
     png = base64.b64decode(result["overlays"]["mask_png_base64"].split(",", 1)[1])
     colours = {tuple(int(v) for v in c) for c in np.array(Image.open(io.BytesIO(png)).convert("RGBA")).reshape(-1, 4)}
     types = {b["type"] for b in result["buildings"]}
@@ -19,7 +21,7 @@ def test_classic_mask_png_keeps_rgb_order(client):
 
 
 def test_csv_export_has_ids_types_and_pixel_centroids(client):
-    client.post("/api/detect", json={"scenario_id": "levir1", "use_gt": True})
+    detect_classic(client, "levir1")
     rows = list(csv.reader(io.StringIO(client.get("/api/export/csv").get_data(as_text=True))))
     assert rows[0][-2:] == ["Piksel_X", "Piksel_Y"]
     assert rows[1][0] == "1" and rows[1][1] in BUILDING_TYPES and rows[1][8] != ""

@@ -47,10 +47,6 @@
    "type_tr": "Mevcut / Korunan Bina"
   }
  ],
- "center": [
-  30.5928,
-  114.3055
- ],
  "geojson": {
   "features": [
    {
@@ -137,7 +133,6 @@
   "t1_png_base64": "f23f2929d5712971b5b9bee512f65367bba21ff5d256ed16d8ce077c0c6869ad",
   "t2_png_base64": "d678e7fe54711d8a7de373e3f5d37840b5e8784e353667c290e519536e1b0da0"
  },
- "scenario_id": "dsifn1",
  "stats": {
   "demolished_count": 0,
   "demolished_m2": 0.0,

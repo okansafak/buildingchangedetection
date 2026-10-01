@@ -1,3 +1,6 @@
+from helpers import detect_classic
+
+
 def test_exports_404_before_any_detection(client):
     for url in ("/api/export/geojson", "/api/export/csv"):
         res = client.get(url)
@@ -6,7 +9,7 @@ def test_exports_404_before_any_detection(client):
 
 
 def test_export_bodies(client, snapshot):
-    assert client.post("/api/detect", json={"scenario_id": "levir1", "use_gt": True}).status_code == 200
+    assert detect_classic(client, "levir1").status_code == 200
 
     geo_res = client.get("/api/export/geojson")
     assert geo_res.status_code == 200
