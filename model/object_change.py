@@ -4,16 +4,24 @@ Object-level building change from two building-probability maps.
 Buildings are matched as connected components, not pixels: parallax and
 misregistration between dates shift roofs by a few pixels, and a pixel XOR
 turns every building edge into a false "new"/"demolished" sliver.
+
+A T2 building standing on ground that was already built in T1 is "existing"
+only when its footprint still matches the T1 buildings it touches; otherwise
+it was "rebuilt" (urban transformation: a block replacing several houses).
 """
 import cv2
 import numpy as np
 
 # Label values in the returned mask (match BUILDING_TYPES mask_value)
-LABEL_VALUES = {"new": 1, "demolished": 2, "existing": 3}
+LABEL_VALUES = {"new": 1, "demolished": 2, "existing": 3, "rebuilt": 4}
 
 SUPPORT_PROB = 0.25   # the other date "supports" a pixel when its probability exceeds this
 NO_SUPPORT = 0.10     # an object with less supported area than this is wholly new/demolished
 SLIVER_KERNEL = 7     # opening size (px) that removes misregistration slivers from partial parts
+# Footprint overlap (vs. the T1 buildings it touches) below which an "existing" T2 building counts as
+# rebuilt. Measured on Wayback 2014 -> 2026: median overlap 0.89 for an unchanged suburb (1/211 flagged),
+# 0.60-0.73 in transformation areas (Fikirtepe 58/201, Örnekköy 64/243 flagged).
+REBUILT_IOU = 0.45
 
 _OPEN_SMALL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
 _OPEN_SLIVER = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (SLIVER_KERNEL, SLIVER_KERNEL))
@@ -48,7 +56,12 @@ def _emit(objects, label_mask, change_type, mask, x, y, p_same, p_other):
         polygon = contour
     same = float(p_same[mask].mean())
     other = float(p_other[mask].mean())
-    confidence = same * (1.0 - other) if change_type != "existing" else same * other
+    if change_type == "existing":
+        confidence = same * other
+    elif change_type == "rebuilt":
+        confidence = same  # both dates have a building here by definition
+    else:
+        confidence = same * (1.0 - other)
     label_mask[y:y + mask.shape[0], x:x + mask.shape[1]][mask] = LABEL_VALUES[change_type]
     objects.append({
         "type": change_type,
@@ -68,9 +81,28 @@ def _tolerant_support(prob, tolerance_px):
     return support.astype(bool)
 
 
+def _footprint_match(obj, x, y, t1_labels, t1_tolerant, pad):
+    """(overlap, number of T1 buildings touched, share of those T1 buildings inside the object) for a T2 object
+    (bool crop at x, y). The overlap's intersection uses the T1 mask dilated by the parallax tolerance, its union
+    only the touching T1 buildings (not bbox neighbours)."""
+    h, w = t1_labels.shape
+    y0, x0 = max(0, y - pad), max(0, x - pad)
+    y1, x1 = min(h, y + obj.shape[0] + pad), min(w, x + obj.shape[1] + pad)
+    m = np.zeros((y1 - y0, x1 - x0), dtype=bool)
+    m[y - y0:y - y0 + obj.shape[0], x - x0:x - x0 + obj.shape[1]] = obj
+    l1 = t1_labels[y0:y1, x0:x1]
+    under = np.unique(l1[m])
+    under = under[under > 0]
+    if not len(under):
+        return 0.0, 0, 0.0
+    touching = np.isin(l1, under)
+    overlap = float((m & t1_tolerant[y0:y1, x0:x1]).sum() / max(1, (m | touching).sum()))
+    return overlap, len(under), float((touching & m).sum() / max(1, touching.sum()))
+
+
 def classify_objects(prob_t1, prob_t2, threshold=0.5, min_px=40, tolerance_px=0):
     """
-    Returns (objects, label_mask). Each object: type ("new" | "demolished" | "existing"),
+    Returns (objects, label_mask). Each object: type ("new" | "demolished" | "existing" | "rebuilt"),
     polygon (N x 1 x 2 int32, full-image px), area_px, perimeter_px, confidence_pct.
     label_mask holds LABEL_VALUES. tolerance_px: how far a roof may move between
     dates (off-nadir parallax, misregistration) and still count as the same building.
@@ -80,6 +112,17 @@ def classify_objects(prob_t1, prob_t2, threshold=0.5, min_px=40, tolerance_px=0)
     objects = []
     support_t1 = _tolerant_support(prob_t1, tolerance_px)
     support_t2 = _tolerant_support(prob_t2, tolerance_px)
+    t1_raw = (prob_t1 >= threshold).astype(np.uint8)
+    _, t1_labels = cv2.connectedComponents(t1_raw)
+    k = 2 * int(round(tolerance_px)) + 1
+    t1_tolerant = cv2.dilate(t1_raw, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))).astype(bool)
+    pad = int(round(tolerance_px))
+
+    def rebuilt(obj, x, y):
+        """Low footprint overlap AND it replaced several T1 buildings or does not contain its T1 building
+        (an extension keeps the old building inside: that stays existing + new part)."""
+        overlap, n_t1, contained = _footprint_match(obj, x, y, t1_labels, t1_tolerant, pad)
+        return overlap < REBUILT_IOU and (n_t1 >= 2 or contained < 0.7)
 
     # T2 objects -> new / existing (partially supported objects are split)
     b2 = cv2.morphologyEx((prob_t2 >= threshold).astype(np.uint8), cv2.MORPH_OPEN, _OPEN_SMALL)
@@ -92,6 +135,9 @@ def classify_objects(prob_t1, prob_t2, threshold=0.5, min_px=40, tolerance_px=0)
         support = s1[obj].mean()
         if support < NO_SUPPORT:
             _emit(objects, label_mask, "new", obj, x, y, p2, p1)
+            continue
+        if rebuilt(obj, x, y):
+            _emit(objects, label_mask, "rebuilt", obj, x, y, p2, p1)
             continue
         new_parts = _parts(obj & ~s1, min_px)
         if not new_parts:

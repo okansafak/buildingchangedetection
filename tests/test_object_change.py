@@ -78,3 +78,19 @@ def test_estimate_parallax_needs_enough_matches():
     from model.object_change import estimate_parallax_px
     p1, p2 = _city(shift_px=10, n=8)
     assert estimate_parallax_px(p1, p2, max_shift_px=24) is None
+
+
+def test_block_replacing_several_houses_is_rebuilt():
+    """Urban transformation: small houses in T1, one large block on the same ground in T2."""
+    p1 = _prob(300, 300, [(40, 40, 64, 64), (40, 90, 64, 114), (90, 40, 114, 64), (90, 90, 114, 114)])
+    p2 = _prob(300, 300, [(30, 30, 140, 140)])
+    objects, label = classify_objects(p1, p2, min_px=40, tolerance_px=4)
+    assert [o["type"] for o in objects] == ["rebuilt"]
+    assert label[100, 100] == LABEL_VALUES["rebuilt"]
+
+
+def test_unchanged_building_is_not_rebuilt():
+    p1 = _prob(200, 200, [(40, 40, 100, 120)])
+    p2 = _prob(200, 200, [(42, 43, 102, 123)])  # same footprint, slightly shifted
+    objects, _ = classify_objects(p1, p2, min_px=40, tolerance_px=4)
+    assert [o["type"] for o in objects] == ["existing"]

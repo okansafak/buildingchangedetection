@@ -32,6 +32,14 @@ BUILDING_TYPES = {
         "mask_value": 3,
         "overlay_rgba": [100, 116, 139, 140],
     },
+    # ML engine only: a different building on ground that was already built (urban transformation)
+    "rebuilt": {
+        "type_tr": "Yeniden Yapılan Bina",
+        "icon": "🟠",
+        "color": "#f59e0b",
+        "mask_value": 4,
+        "overlay_rgba": [245, 158, 11, 210],
+    },
 }
 
 

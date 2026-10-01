@@ -88,8 +88,8 @@ const state = {
     
     // Live Hotspots & Map Selection (Step 1)
     hotspots: {},
-    currentHotspotId: 'austin_pflugerville',
-    selectedCoords: [30.4750, -97.6250],
+    currentHotspotId: 'istanbul_fikirtepe',
+    selectedCoords: [40.9902, 29.0520],
     selectedZoom: 17,
     selectMap: null,
     selectMarker: null,
@@ -117,8 +117,7 @@ const state = {
     // View Mode & Filters
     viewMode: localStorage.getItem('atlas_view_mode') || 'grid',
     activeFilterScope: 'all',
-    activeSortBy: 'updated',
-    activeCollection: 'all'
+    activeSortBy: 'updated'
 };
 
 // DOM References
@@ -142,17 +141,14 @@ const el = {
     containerAllProjects: document.getElementById('container-all-projects'),
     lblAllProjectsCount: document.getElementById('lbl-all-projects-count'),
 
-    // Sidebar Menu & Collections
+    // Sidebar Menu
     menuBtnDiscover: document.getElementById('menu-btn-discover'),
     menuBtnProjects: document.getElementById('menu-btn-projects'),
     menuBtnSettings: document.getElementById('menu-btn-settings'),
-    collectionsList: document.getElementById('collections-list'),
-    btnAddCollection: document.getElementById('btn-add-collection'),
 
     // Modals
     modalDiscover: document.getElementById('modal-discover'),
     modalSettings: document.getElementById('modal-settings'),
-    modalCollection: document.getElementById('modal-collection'),
 
     // Settings Modal Controls
     rangeSettingThreshold: document.getElementById('range-setting-threshold'),
@@ -162,9 +158,6 @@ const el = {
     btnSaveSettings: document.getElementById('btn-save-settings'),
     btnClearAllProjects: document.getElementById('btn-clear-all-projects'),
 
-    // Collection Modal Controls
-    inputNewCollectionName: document.getElementById('input-new-collection-name'),
-    btnConfirmAddCollection: document.getElementById('btn-confirm-add-collection'),
     
     // Workspace Topbar
     btnBackToDashboard: document.getElementById('btn-back-to-dashboard'),
@@ -227,6 +220,7 @@ const el = {
     // Step 3
     btnRestartWizard: document.getElementById('btn-restart-wizard'),
     resCountNew: document.getElementById('res-count-new'),
+    resCountRebuilt: document.getElementById('res-count-rebuilt'),
     resCountDem: document.getElementById('res-count-dem'),
     resCountExist: document.getElementById('res-count-exist'),
     resTotalArea: document.getElementById('res-total-area'),
@@ -253,6 +247,7 @@ const el = {
     stageVectorSvg: document.getElementById('stage-vector-svg'),
     svgGroupExist: document.getElementById('svg-group-exist'),
     svgGroupNew: document.getElementById('svg-group-new'),
+    svgGroupRebuilt: document.getElementById('svg-group-rebuilt'),
     svgGroupDem: document.getElementById('svg-group-dem'),
     svgGroupLabels: document.getElementById('svg-group-labels'),
     swipeDividerLine: document.getElementById('swipe-divider-line'),
@@ -261,10 +256,12 @@ const el = {
     
     // Floating Vector Layer Checkboxes
     chkLayerNew: document.getElementById('chk-layer-new'),
+    chkLayerRebuilt: document.getElementById('chk-layer-rebuilt'),
     chkLayerDem: document.getElementById('chk-layer-dem'),
     chkLayerExist: document.getElementById('chk-layer-exist'),
     chkLayerLabels: document.getElementById('chk-layer-labels'),
     layerBadgeNew: document.getElementById('layer-badge-new'),
+    layerBadgeRebuilt: document.getElementById('layer-badge-rebuilt'),
     layerBadgeDem: document.getElementById('layer-badge-dem'),
     layerBadgeExist: document.getElementById('layer-badge-exist'),
     
@@ -358,7 +355,7 @@ function applyFilterAndSort() {
     } else if (scope === 'kentsel') {
         list = list.filter(p => {
             const str = ((p.name || '') + ' ' + (p.location_name || '') + ' ' + (p.collection || '')).toLowerCase();
-            return str.includes('kentsel') || str.includes('fikirtepe') || str.includes('kadıköy');
+            return str.includes('kentsel') || str.includes('dönüşüm') || str.includes('fikirtepe') || str.includes('kadıköy') || str.includes('mamak') || str.includes('örnekköy');
         });
     } else if (scope === 'konut') {
         list = list.filter(p => {
@@ -370,9 +367,6 @@ function applyFilterAndSort() {
             const str = ((p.name || '') + ' ' + (p.location_name || '') + ' ' + (p.collection || '')).toLowerCase();
             return str.includes('sanayi') || str.includes('austin') || str.includes('giga') || str.includes('dubai') || str.includes('fabrika') || str.includes('lojistik');
         });
-    } else if (scope && scope !== 'all') {
-        // Custom collection filter
-        list = list.filter(p => p.collection === scope);
     }
 
     // 2. Sort
@@ -978,7 +972,7 @@ async function handleStep1Next() {
                 lon: state.selectedCoords[1],
                 year_t1: y1,
                 year_t2: y2,
-                grid_size: isMapClick ? liveGridSize() : 2
+                grid_size: isMapClick ? liveGridSize() : (state.hotspots[state.currentHotspotId]?.grid_size || 2)
             };
             const res = await fetch('/api/live/preview', {
                 method: 'POST',
@@ -1116,12 +1110,14 @@ function renderPureImageResults(data) {
     if (el.resCountNew) el.resCountNew.textContent = stats.new_buildings_count || 0;
     if (el.resCountDem) el.resCountDem.textContent = stats.demolished_count || 0;
     if (el.resCountExist) el.resCountExist.textContent = stats.existing_count || 0;
+    if (el.resCountRebuilt) el.resCountRebuilt.textContent = stats.rebuilt_count || 0;
     if (el.resTotalArea) el.resTotalArea.textContent = formatArea(stats.total_changed_m2, stats.total_changed_px);
     
     // Layer badges
     if (el.layerBadgeNew) el.layerBadgeNew.textContent = stats.new_buildings_count || 0;
     if (el.layerBadgeDem) el.layerBadgeDem.textContent = stats.demolished_count || 0;
     if (el.layerBadgeExist) el.layerBadgeExist.textContent = stats.existing_count || 0;
+    if (el.layerBadgeRebuilt) el.layerBadgeRebuilt.textContent = stats.rebuilt_count || 0;
     
     // Set years
     const capture = data.capture || {};
@@ -1152,6 +1148,7 @@ function renderPureImageResults(data) {
     // 3. Populate SVG Polygons and Labels
     if (el.svgGroupExist) el.svgGroupExist.innerHTML = '';
     if (el.svgGroupNew) el.svgGroupNew.innerHTML = '';
+    if (el.svgGroupRebuilt) el.svgGroupRebuilt.innerHTML = '';
     if (el.svgGroupDem) el.svgGroupDem.innerHTML = '';
     if (el.svgGroupLabels) el.svgGroupLabels.innerHTML = '';
 
@@ -1169,8 +1166,9 @@ function renderPureImageResults(data) {
 
         const isNew = b.type === 'new';
         const isDem = b.type === 'demolished';
-        const color = isNew ? '#10b981' : (isDem ? '#ef4444' : '#64748b');
-        const strokeColor = isNew ? '#059669' : (isDem ? '#dc2626' : '#475569');
+        const isRebuilt = b.type === 'rebuilt';
+        const color = isNew ? '#10b981' : (isDem ? '#ef4444' : (isRebuilt ? '#f59e0b' : '#64748b'));
+        const strokeColor = isNew ? '#059669' : (isDem ? '#dc2626' : (isRebuilt ? '#d97706' : '#475569'));
 
         polygon.setAttribute('fill', color);
         polygon.setAttribute('fill-opacity', '0.45');
@@ -1201,6 +1199,8 @@ function renderPureImageResults(data) {
             el.svgGroupNew.appendChild(polygon);
         } else if (isDem && el.svgGroupDem) {
             el.svgGroupDem.appendChild(polygon);
+        } else if (isRebuilt && el.svgGroupRebuilt) {
+            el.svgGroupRebuilt.appendChild(polygon);
         } else if (el.svgGroupExist) {
             el.svgGroupExist.appendChild(polygon);
         }
@@ -1232,6 +1232,7 @@ function renderPureImageResults(data) {
             let badgeClass = 'badge-b-exist';
             if (b.type === 'new') badgeClass = 'badge-b-new';
             else if (b.type === 'demolished') badgeClass = 'badge-b-dem';
+            else if (b.type === 'rebuilt') badgeClass = 'badge-b-rebuilt';
 
             item.innerHTML = `
                 <div class="building-card-header">
@@ -1510,6 +1511,11 @@ function setupSwipeInteractions() {
             if (el.svgGroupNew) el.svgGroupNew.style.display = e.target.checked ? '' : 'none';
         });
     }
+    if (el.chkLayerRebuilt) {
+        el.chkLayerRebuilt.addEventListener('change', (e) => {
+            if (el.svgGroupRebuilt) el.svgGroupRebuilt.style.display = e.target.checked ? '' : 'none';
+        });
+    }
     if (el.chkLayerDem) {
         el.chkLayerDem.addEventListener('change', (e) => {
             if (el.svgGroupDem) el.svgGroupDem.style.display = e.target.checked ? '' : 'none';
@@ -1528,7 +1534,7 @@ function setupSwipeInteractions() {
 }
 
 // ==========================================
-// MODALS, SETTINGS & COLLECTIONS HELPERS
+// MODALS & SETTINGS HELPERS
 // ==========================================
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
@@ -1552,64 +1558,6 @@ function getAiSettings() {
         if (saved) return JSON.parse(saved);
     } catch(e) {}
     return { threshold: 0.45, minArea: 30.0 };
-}
-
-function initCollections() {
-    let customCols = [];
-    try {
-        customCols = JSON.parse(localStorage.getItem('atlas_custom_collections') || '[]');
-    } catch(e) {}
-
-    customCols.forEach(col => {
-        addCollectionToSidebar(col.id, col.name, col.color, false);
-    });
-
-    document.querySelectorAll('#collections-list .col-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const col = item.getAttribute('data-col');
-            handleCollectionSelect(col, item);
-        });
-    });
-}
-
-function addCollectionToSidebar(id, name, color, save = true) {
-    if (!el.collectionsList) return;
-    const item = document.createElement('div');
-    item.className = 'col-item';
-    item.setAttribute('data-col', id);
-    item.innerHTML = `<i class="fa-solid fa-circle text-${color}"></i> ${escapeHtml(name)}`;
-    
-    item.addEventListener('click', () => {
-        handleCollectionSelect(id, item);
-    });
-
-    el.collectionsList.appendChild(item);
-
-    if (save) {
-        let customCols = [];
-        try {
-            customCols = JSON.parse(localStorage.getItem('atlas_custom_collections') || '[]');
-        } catch(e) {}
-        customCols.push({ id, name, color });
-        localStorage.setItem('atlas_custom_collections', JSON.stringify(customCols));
-    }
-}
-
-function handleCollectionSelect(colId, itemEl) {
-    document.querySelectorAll('#collections-list .col-item').forEach(c => c.classList.remove('active'));
-    if (itemEl) itemEl.classList.add('active');
-    state.activeCollection = colId;
-    state.activeFilterScope = colId;
-    
-    if (el.dashFilterScope) {
-        const exists = Array.from(el.dashFilterScope.options).some(o => o.value === colId);
-        if (exists) {
-            el.dashFilterScope.value = colId;
-        } else {
-            el.dashFilterScope.value = 'all';
-        }
-    }
-    applyFilterAndSort();
 }
 
 function initSettings() {
@@ -1674,28 +1622,6 @@ function initModals() {
         el.menuBtnSettings.addEventListener('click', (e) => {
             e.preventDefault();
             openModal('modal-settings');
-        });
-    }
-    if (el.btnAddCollection) {
-        el.btnAddCollection.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (el.inputNewCollectionName) el.inputNewCollectionName.value = '';
-            openModal('modal-collection');
-        });
-    }
-    if (el.btnConfirmAddCollection) {
-        el.btnConfirmAddCollection.addEventListener('click', () => {
-            const name = el.inputNewCollectionName ? el.inputNewCollectionName.value.trim() : '';
-            if (!name) {
-                showToast('Lütfen bir koleksiyon adı girin.', 'warning');
-                return;
-            }
-            const colorRadio = document.querySelector('input[name="col-color"]:checked');
-            const color = colorRadio ? colorRadio.value : 'blue';
-            const colId = 'custom_' + Date.now();
-            addCollectionToSidebar(colId, name, color, true);
-            closeModal('modal-collection');
-            showToast(`"${name}" koleksiyonu eklendi.`, 'success');
         });
     }
 
@@ -1780,9 +1706,6 @@ function setupEvents() {
     if (el.dashFilterScope) {
         el.dashFilterScope.addEventListener('change', (e) => {
             state.activeFilterScope = e.target.value;
-            document.querySelectorAll('#collections-list .col-item').forEach(c => {
-                c.classList.toggle('active', c.getAttribute('data-col') === state.activeFilterScope);
-            });
             applyFilterAndSort();
         });
     }
@@ -1922,7 +1845,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEvents();
     initModals();
     initSettings();
-    initCollections();
     setViewMode(state.viewMode);
     loadHotspots();
     loadProjects();

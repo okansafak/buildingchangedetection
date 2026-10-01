@@ -2442,3 +2442,10 @@ input[type="range"]::-moz-range-thumb {
     color: #b45309;
     font-weight: 600;
 }
+
+/* Rebuilt buildings (urban transformation) */
+.stat-rebuilt .stat-pill-icon { background: #fef3c7; color: #d97706; }
+.summary-stat-grid .stat-total { grid-column: 1 / -1; }
+.badge-b-rebuilt { background-color: #fef3c7; color: #b45309; }
+.dot-rebuilt { background-color: #f59e0b; }
+.badge-rebuilt { background: #fef3c7; color: #b45309; }

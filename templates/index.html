@@ -54,19 +54,6 @@
                     </a>
                 </nav>
 
-                <div class="menu-divider"></div>
-
-                <!-- Collections Section -->
-                <div class="collections-header">
-                    <span>Collections</span>
-                    <i class="fa-solid fa-plus btn-add-collection" id="btn-add-collection" title="Yeni Koleksiyon Ekle"></i>
-                </div>
-                <div class="collections-list" id="collections-list">
-                    <div class="col-item active" data-col="all"><i class="fa-solid fa-layer-group"></i> Tüm Projeler</div>
-                    <div class="col-item" data-col="kentsel"><i class="fa-solid fa-circle text-blue"></i> Kentsel Dönüşüm</div>
-                    <div class="col-item" data-col="konut"><i class="fa-solid fa-circle text-green"></i> Toplu Konut Projeleri</div>
-                    <div class="col-item" data-col="sanayi"><i class="fa-solid fa-circle text-purple"></i> Sanayi & Altyapı</div>
-                </div>
             </aside>
 
             <!-- Main Dashboard Area -->
@@ -262,14 +249,17 @@
                             <div class="form-group">
                                 <label><i class="fa-solid fa-location-dot"></i> Kentsel Gelişim Bölgesi:</label>
                                 <select id="select-hotspot" class="form-control">
+                                    <option value="istanbul_fikirtepe">🇹🇷 İstanbul - Fikirtepe (Kentsel Dönüşüm)</option>
+                                    <option value="ankara_mamak">🇹🇷 Ankara - Mamak Gülseren (Gecekondu Dönüşümü)</option>
+                                    <option value="izmir_ornekkoy">🇹🇷 İzmir - Örnekköy (Kentsel Dönüşüm)</option>
                                     <option value="austin_pflugerville">🇺🇸 Austin, Teksas - Pflugerville (Yeni Konut Siteleri)</option>
                                     <option value="dubai_hills">🇦🇪 Dubai - Dubai Hills Estate (Çölden Villa Kentine)</option>
                                 </select>
                             </div>
                             
                             <div class="hotspot-summary-card">
-                                <div class="hotspot-badge" id="lbl-hotspot-name">Austin, Teksas - Pflugerville Yeni Konut Siteleri</div>
-                                <p id="lbl-hotspot-desc">Austin'in kuzey banliyösünde boş parsellerin tek katlı müstakil konut sokaklarıyla dolması.</p>
+                                <div class="hotspot-badge" id="lbl-hotspot-name">İstanbul - Fikirtepe (Kentsel Dönüşüm)</div>
+                                <p id="lbl-hotspot-desc">Kadıköy'de az katlı eski konutların yıkılıp yerlerine yüksek blokların yapılması: yeniden yapılan, yıkılan ve korunan binalar bir arada.</p>
                             </div>
 
                             <div class="time-select-row">
@@ -308,6 +298,9 @@
                                     Seçilen Koordinat: <strong id="lbl-selected-coords">41.1070, 28.7900</strong>
                                 </div>
                                 <div style="display: flex; gap: 6px;">
+                                    <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="40.9902" data-lon="29.0520" data-zoom="16">Fikirtepe</button>
+                                    <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="39.9330" data-lon="32.9010" data-zoom="16">Mamak</button>
+                                    <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="38.4795" data-lon="27.1135" data-zoom="16">Örnekköy</button>
                                     <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="30.4750" data-lon="-97.6250" data-zoom="16">Austin Pflugerville</button>
                                     <button type="button" class="btn btn-outline btn-sm quick-city-btn" data-lat="25.1030" data-lon="55.2480" data-zoom="16">Dubai Hills</button>
                                 </div>
@@ -474,6 +467,14 @@
                                     </div>
                                 </div>
 
+                                <div class="stat-pill stat-rebuilt">
+                                    <div class="stat-pill-icon"><i class="fa-solid fa-arrows-rotate"></i></div>
+                                    <div>
+                                        <div class="stat-pill-val" id="res-count-rebuilt">0</div>
+                                        <div class="stat-pill-lbl">Yeniden Yapılan</div>
+                                    </div>
+                                </div>
+
                                 <div class="stat-pill stat-exist">
                                     <div class="stat-pill-icon"><i class="fa-solid fa-building"></i></div>
                                     <div>
@@ -564,6 +565,12 @@
                                             <span class="layer-badge badge-dem" id="layer-badge-dem">0</span>
                                         </label>
                                         <label class="layer-toggle-row">
+                                            <input type="checkbox" id="chk-layer-rebuilt" checked>
+                                            <span class="layer-dot dot-rebuilt"></span>
+                                            <span class="layer-label">Yeniden Yapılan Binalar</span>
+                                            <span class="layer-badge badge-rebuilt" id="layer-badge-rebuilt">0</span>
+                                        </label>
+                                        <label class="layer-toggle-row">
                                             <input type="checkbox" id="chk-layer-exist" checked>
                                             <span class="layer-dot dot-exist"></span>
                                             <span class="layer-label">Mevcut Binalar</span>
@@ -593,6 +600,7 @@
                                         <!-- SVG Vector Overlay for Building Polygons and Labels -->
                                         <svg id="stage-vector-svg" class="stage-vector-svg" viewBox="0 0 512 512" preserveAspectRatio="none">
                                             <g id="svg-group-exist" class="svg-group"></g>
+                                            <g id="svg-group-rebuilt" class="svg-group"></g>
                                             <g id="svg-group-new" class="svg-group"></g>
                                             <g id="svg-group-dem" class="svg-group"></g>
                                             <g id="svg-group-labels" class="svg-group"></g>
@@ -645,6 +653,36 @@
             </div>
             <div class="atlas-modal-body">
                 <div class="discover-grid">
+                    <div class="discover-card" data-hotspot="istanbul_fikirtepe">
+                        <div class="discover-badge">İstanbul</div>
+                        <h4>🇹🇷 Kadıköy - Fikirtepe</h4>
+                        <p>Az katlı konutların yerini yüksek blokların aldığı kentsel dönüşüm alanı.</p>
+                        <div class="discover-footer">
+                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2014 → 2026</span>
+                            <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
+                        </div>
+                    </div>
+
+                    <div class="discover-card" data-hotspot="ankara_mamak">
+                        <div class="discover-badge">Ankara</div>
+                        <h4>🇹🇷 Mamak - Gülseren</h4>
+                        <p>Gecekonduların yıkılıp toplu konut bloklarına dönüştüğü alan.</p>
+                        <div class="discover-footer">
+                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2014 → 2026</span>
+                            <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
+                        </div>
+                    </div>
+
+                    <div class="discover-card" data-hotspot="izmir_ornekkoy">
+                        <div class="discover-badge">İzmir</div>
+                        <h4>🇹🇷 Karşıyaka - Örnekköy</h4>
+                        <p>Tek katlı mahalle dokusunun büyük konut bloklarına dönüşümü.</p>
+                        <div class="discover-footer">
+                            <span class="discover-years"><i class="fa-regular fa-clock"></i> 2014 → 2026</span>
+                            <button class="btn btn-primary btn-sm btn-quick-analyze">Analizi Başlat</button>
+                        </div>
+                    </div>
+
                     <div class="discover-card" data-hotspot="austin_pflugerville">
                         <div class="discover-badge">ABD</div>
                         <h4>🇺🇸 Austin, Teksas - Pflugerville</h4>
@@ -715,46 +753,6 @@
                     <button class="btn btn-primary btn-sm" id="btn-save-settings">
                         <i class="fa-solid fa-check"></i> Kaydet
                     </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ======================================================== -->
-    <!-- MODAL 4: NEW COLLECTION (YENİ KOLEKSİYON EKLE)          -->
-    <!-- ======================================================== -->
-    <div class="atlas-modal-backdrop" id="modal-collection">
-        <div class="atlas-modal-card modal-sm">
-            <div class="atlas-modal-header">
-                <div class="modal-title-wrap">
-                    <i class="fa-solid fa-folder-plus modal-title-icon text-blue"></i>
-                    <div>
-                        <h3>Yeni Koleksiyon Oluştur</h3>
-                        <p>Projelerinizi kategorilere ayırmak için bir koleksiyon tanımlayın.</p>
-                    </div>
-                </div>
-                <button class="btn-modal-close" data-close="modal-collection"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="atlas-modal-body">
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label style="font-weight: 600; color: var(--text-primary);">Koleksiyon Adı:</label>
-                    <input type="text" id="input-new-collection-name" class="form-control" placeholder="Örn: Turizm & Otel Projeleri">
-                </div>
-
-                <div class="form-group" style="margin-bottom: 20px;">
-                    <label style="font-weight: 600; color: var(--text-primary);">Renk Etiketi:</label>
-                    <div class="color-picker-row">
-                        <label class="color-radio"><input type="radio" name="col-color" value="blue" checked><span class="col-dot text-blue"></span></label>
-                        <label class="color-radio"><input type="radio" name="col-color" value="green"><span class="col-dot text-green"></span></label>
-                        <label class="color-radio"><input type="radio" name="col-color" value="purple"><span class="col-dot text-purple"></span></label>
-                        <label class="color-radio"><input type="radio" name="col-color" value="amber"><span class="col-dot text-amber"></span></label>
-                        <label class="color-radio"><input type="radio" name="col-color" value="rose"><span class="col-dot text-rose"></span></label>
-                    </div>
-                </div>
-
-                <div style="display:flex; justify-content:flex-end; gap:8px;">
-                    <button class="btn btn-secondary btn-sm" data-close="modal-collection">İptal</button>
-                    <button class="btn btn-primary btn-sm" id="btn-confirm-add-collection">Koleksiyon Ekle</button>
                 </div>
             </div>
         </div>

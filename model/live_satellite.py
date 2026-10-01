@@ -34,6 +34,41 @@ WAYBACK_RELEASES = {
 
 # Famous rapid urban change hotspots worldwide
 LIVE_HOTSPOTS = {
+    # Urban transformation (kentsel dönüşüm): 3x3 tiles (~700 m) so the transformed fabric fits the frame.
+    # Measured with the ML engine (2014 -> 2026): mostly "rebuilt" / "demolished" buildings.
+    "istanbul_fikirtepe": {
+        "id": "istanbul_fikirtepe",
+        "title": "İstanbul - Fikirtepe (Kentsel Dönüşüm)",
+        "lat": 40.9902,
+        "lon": 29.0520,
+        "zoom": 17,
+        "grid_size": 3,
+        "year_t1": "2014",
+        "year_t2": "2026",
+        "desc": "Kadıköy'de az katlı eski konutların yıkılıp yerlerine yüksek blokların yapılması: yeniden yapılan, yıkılan ve korunan binalar bir arada."
+    },
+    "ankara_mamak": {
+        "id": "ankara_mamak",
+        "title": "Ankara - Mamak Gülseren (Gecekondu Dönüşümü)",
+        "lat": 39.9330,
+        "lon": 32.9010,
+        "zoom": 17,
+        "grid_size": 3,
+        "year_t1": "2014",
+        "year_t2": "2026",
+        "desc": "Gecekondu alanlarının yıkılıp toplu konut bloklarına dönüşmesi: yüzlerce yıkılan gecekondu ve yerlerine yapılan bloklar."
+    },
+    "izmir_ornekkoy": {
+        "id": "izmir_ornekkoy",
+        "title": "İzmir - Örnekköy (Kentsel Dönüşüm)",
+        "lat": 38.4795,
+        "lon": 27.1135,
+        "zoom": 17,
+        "grid_size": 3,
+        "year_t1": "2014",
+        "year_t2": "2026",
+        "desc": "Karşıyaka'da tek katlı mahalle dokusunun yerini büyük konut bloklarına bırakması."
+    },
     "austin_pflugerville": {
         "id": "austin_pflugerville",
         "title": "Austin, Teksas - Pflugerville Yeni Konut Siteleri",

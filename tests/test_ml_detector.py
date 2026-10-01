@@ -153,3 +153,16 @@ def test_parallax_tolerance_defaults_to_two_metres_without_enough_buildings():
     a, b = _pair()
     r = MLChangeDetector(FakeSegmenter()).detect(a, b, gsd=0.25, mode="deep")
     assert r["parallax_tolerance_m"] == 2.0
+
+
+def test_rebuilt_buildings_are_counted_as_change():
+    t1 = np.zeros((300, 300, 3), np.uint8)
+    t2 = np.zeros((300, 300, 3), np.uint8)
+    for y, x in ((40, 40), (40, 90), (90, 40), (90, 90)):
+        t1[y:y + 24, x:x + 24] = 255
+    t2[30:140, 30:140] = 255
+    r = MLChangeDetector(FakeSegmenter()).detect(Image.fromarray(t1), Image.fromarray(t2), gsd=0.5, mode="deep")
+    s = r["stats"]
+    assert (s["rebuilt_count"], s["new_buildings_count"], s["existing_count"]) == (1, 0, 0)
+    assert s["rebuilt_m2"] > 0 and s["total_changed_m2"] >= s["rebuilt_m2"]
+    assert r["buildings"][0]["type_tr"] == "Yeniden Yapılan Bina"

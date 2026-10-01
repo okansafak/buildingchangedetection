@@ -30,7 +30,7 @@ DEFAULT_PARALLAX_M = 2.0     # when too few buildings match to measure it
 MAX_PARALLAX_M = 15.0        # search radius / upper bound
 FAST_MIN_SIDE = 2048         # "Hızlı" halves only images larger than this ...
 FAST_MAX_GSD = 1.2           # ... and only while the halved GSD stays at or below this (2 m/px was unusable)
-ORDER = {"new": 0, "demolished": 1, "existing": 2}
+ORDER = {"new": 0, "demolished": 1, "rebuilt": 2, "existing": 3}
 
 
 def analysis_scale(w, h, gsd, mode):
@@ -76,7 +76,8 @@ def change_metrics(label_mask, ground_truth):
         with Image.open(ground_truth) as im:
             ground_truth = np.array(im.convert("L"))
     gt = cv2.resize(ground_truth.astype(np.uint8), (w, h), interpolation=cv2.INTER_NEAREST) > 127
-    pred = (label_mask == BUILDING_TYPES["new"]["mask_value"]) | (label_mask == BUILDING_TYPES["demolished"]["mask_value"])
+    changed = [BUILDING_TYPES[t]["mask_value"] for t in ("new", "demolished", "rebuilt")]
+    pred = np.isin(label_mask, changed)
     tp = int((pred & gt).sum())
     fp = int((pred & ~gt).sum())
     fn = int((~pred & gt).sum())
@@ -230,7 +231,7 @@ class MLChangeDetector:
         def m2(px):
             return round(px * gsd * gsd, 1) if gsd else None
 
-        changed_px = areas_px["new"] + areas_px["demolished"]
+        changed_px = areas_px["new"] + areas_px["demolished"] + areas_px["rebuilt"]
         report(0.98, "Sonuçlar hazırlanıyor")
         return {
             "success": True,
@@ -246,11 +247,13 @@ class MLChangeDetector:
                 "new_buildings_count": counts["new"],
                 "demolished_count": counts["demolished"],
                 "existing_count": counts["existing"],
+                "rebuilt_count": counts["rebuilt"],
                 "total_changed_m2": m2(changed_px),
                 "total_changed_hectares": round(changed_px * gsd * gsd / 10000.0, 3) if gsd else None,
                 "new_buildings_m2": m2(areas_px["new"]),
                 "demolished_m2": m2(areas_px["demolished"]),
                 "existing_m2": m2(areas_px["existing"]),
+                "rebuilt_m2": m2(areas_px["rebuilt"]),
                 "total_changed_px": changed_px,
                 "patch_dimensions": f"{w}x{h} px ({int(w * gsd)}m x {int(h * gsd)}m)" if gsd else f"{w}x{h} px (ölçeksiz)",
                 "gsd": round(gsd, 3) if gsd else None,

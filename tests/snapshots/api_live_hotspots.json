@@ -1,5 +1,38 @@
 [
  {
+  "desc": "Kadıköy'de az katlı eski konutların yıkılıp yerlerine yüksek blokların yapılması: yeniden yapılan, yıkılan ve korunan binalar bir arada.",
+  "grid_size": 3,
+  "id": "istanbul_fikirtepe",
+  "lat": 40.9902,
+  "lon": 29.052,
+  "title": "İstanbul - Fikirtepe (Kentsel Dönüşüm)",
+  "year_t1": "2014",
+  "year_t2": "2026",
+  "zoom": 17
+ },
+ {
+  "desc": "Gecekondu alanlarının yıkılıp toplu konut bloklarına dönüşmesi: yüzlerce yıkılan gecekondu ve yerlerine yapılan bloklar.",
+  "grid_size": 3,
+  "id": "ankara_mamak",
+  "lat": 39.933,
+  "lon": 32.901,
+  "title": "Ankara - Mamak Gülseren (Gecekondu Dönüşümü)",
+  "year_t1": "2014",
+  "year_t2": "2026",
+  "zoom": 17
+ },
+ {
+  "desc": "Karşıyaka'da tek katlı mahalle dokusunun yerini büyük konut bloklarına bırakması.",
+  "grid_size": 3,
+  "id": "izmir_ornekkoy",
+  "lat": 38.4795,
+  "lon": 27.1135,
+  "title": "İzmir - Örnekköy (Kentsel Dönüşüm)",
+  "year_t1": "2014",
+  "year_t2": "2026",
+  "zoom": 17
+ },
+ {
   "desc": "Austin'in kuzey banliyösünde boş parsellerin tek katlı müstakil konut sokaklarıyla dolması.",
   "id": "austin_pflugerville",
   "lat": 30.475,
